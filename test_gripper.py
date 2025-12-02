@@ -1,6 +1,6 @@
 """
-SIMPLE GRIPPER CONTROL WITH YOLO DETECTION
-When object detected → Open/Close Gripper
+SIMPLE GRIPPER CONTROL WITH YAHBOOM ARM LIBRARY
+REAL physical movement when object detected
 """
 
 import cv2
@@ -8,198 +8,237 @@ import time
 import numpy as np
 from ultralytics import YOLO
 import threading
-from collections import deque
+import sys
+import os
 
-print("🤖 SIMPLE GRIPPER CONTROL WITH YOLO")
+print("🤖 SIMPLE GRIPPER CONTROL WITH REAL YAHBOOM ARM")
 print("=" * 60)
 
 # ============================================
-# SIMPLE GRIPPER CONTROL (Open/Close Only)
+# REAL YAHBOOM ARM CONTROL (Using actual library)
 # ============================================
-class SimpleGripperControl:
+class RealYahboomArm:
     def __init__(self):
-        """Simple gripper control via serial"""
+        self.arm = None
         self.connected = False
-        self.ser = None
         self.gripper_open = True
         
-        # Gripper servo (usually servo 5 on Yahboom)
-        self.SERVO_GRIPPER = 5
-        
-        # Calibrate these for your arm!
-        self.GRIPPER_OPEN_PULSE = 700    # Pulse width for OPEN (500-2500)
-        self.GRIPPER_CLOSED_PULSE = 1300 # Pulse width for CLOSED
-        
-        # Movement timing
-        self.gripper_speed = 800  # ms for gripper movement
-        
-        # State
-        self.last_action_time = 0
-        self.action_cooldown = 2.0  # Seconds between actions
-        self.is_acting = False
-        
-        self.initialize_serial()
-    
-    def initialize_serial(self):
-        """Initialize serial connection"""
+        # Try to import the actual Yahboom library
         try:
-            import serial
-            import serial.tools.list_ports
+            # First, add common Yahboom library paths
+            sys.path.append('/home/pi/ArmPi/')
+            sys.path.append('/home/pi/yahboom/')
+            sys.path.append('/home/pi/')
             
-            # Find Yahboom port
-            ports = list(serial.tools.list_ports.comports())
-            if not ports:
-                print("❌ No serial ports found!")
-                return
+            # Try different import methods
+            try:
+                from Arm_Lib import Arm_Device
+                self.Arm = Arm_Device
+                self.arm = Arm_Device()
+                print("✅ Loaded Arm_Device from Arm_Lib")
+            except:
+                try:
+                    import Arm_Lib
+                    self.Arm = Arm_Lib
+                    self.arm = Arm_Lib.Arm_Device()
+                    print("✅ Loaded Arm_Lib")
+                except:
+                    try:
+                        import DOFBOT
+                        self.Arm = DOFBOT
+                        self.arm = DOFBOT.Arm_Device()
+                        print("✅ Loaded DOFBOT")
+                    except:
+                        raise ImportError("No Yahboom library found")
             
-            print("🔌 Available ports:")
-            for p in ports:
-                print(f"  - {p.device}: {p.description}")
-            
-            # Try to find Yahboom port
-            target_port = None
-            for p in ports:
-                if 'USB' in p.description or 'ACM' in p.device or 'ttyUSB' in p.device:
-                    target_port = p.device
-                    break
-            
-            if target_port is None:
-                target_port = ports[0].device
-            
-            print(f"🔗 Connecting to {target_port}...")
-            
-            # Open connection
-            self.ser = serial.Serial(
-                port=target_port,
-                baudrate=115200,
-                timeout=1
-            )
-            time.sleep(2)  # Wait for connection
-            
+            time.sleep(2)  # Wait for arm to initialize
             self.connected = True
-            print(f"✅ Connected to Yahboom arm")
+            print("✅ Yahboom Arm CONNECTED and READY")
             
             # Initialize gripper to OPEN
             self.open_gripper()
             
         except Exception as e:
-            print(f"❌ Serial connection failed: {e}")
-            print("⚠️ Running in SIMULATION mode")
-            self.connected = False
+            print(f"❌ Could not load Yahboom library: {e}")
+            print("⚠️  Trying alternative import methods...")
+            self.try_alternative_import()
     
-    def send_command(self, command):
-        """Send serial command"""
-        if not self.connected or self.ser is None:
-            return False
-        
+    def try_alternative_import(self):
+        """Try alternative ways to import Yahboom library"""
         try:
-            if not command.endswith('\r\n'):
-                command += '\r\n'
-            self.ser.write(command.encode())
-            time.sleep(0.01)
-            return True
-        except Exception as e:
-            print(f"    [SERIAL ERROR] {e}")
+            # Method 1: Direct import if installed
+            import importlib.util
+            
+            # Common Yahboom library names
+            library_names = ['Arm_Lib', 'dofbot', 'yahboom_arm', 'ArmPi']
+            
+            for lib_name in library_names:
+                try:
+                    spec = importlib.util.find_spec(lib_name)
+                    if spec is not None:
+                        module = importlib.import_module(lib_name)
+                        if hasattr(module, 'Arm_Device'):
+                            self.Arm = module
+                            self.arm = module.Arm_Device()
+                            self.connected = True
+                            print(f"✅ Found and loaded {lib_name}")
+                            return
+                except:
+                    continue
+            
+            # Method 2: Check common paths
+            common_paths = [
+                '/home/pi/ArmPi/Arm_Lib.py',
+                '/home/pi/yahboom/Arm_Lib.py',
+                '/home/pi/dofbot.py',
+                '/opt/yahboom/arm_lib.py'
+            ]
+            
+            for path in common_paths:
+                if os.path.exists(path):
+                    try:
+                        # Add the directory to path
+                        dir_path = os.path.dirname(path)
+                        sys.path.append(dir_path)
+                        
+                        # Import based on filename
+                        module_name = os.path.basename(path).replace('.py', '')
+                        module = __import__(module_name)
+                        
+                        if hasattr(module, 'Arm_Device'):
+                            self.Arm = module
+                            self.arm = module.Arm_Device()
+                            self.connected = True
+                            print(f"✅ Loaded from {path}")
+                            return
+                    except:
+                        continue
+            
+            print("❌ No Yahboom library found. Running in simulation mode.")
             self.connected = False
-            return False
+            
+        except Exception as e:
+            print(f"❌ Alternative import failed: {e}")
+            self.connected = False
     
     def open_gripper(self):
-        """Open the gripper"""
-        print("    [GRIPPER] Opening...")
+        """REALLY open the gripper - PHYSICAL MOVEMENT"""
+        print("    [GRIPPER] PHYSICALLY Opening...")
         
-        command = f"#{self.SERVO_GRIPPER} P{self.GRIPPER_OPEN_PULSE} T{self.gripper_speed}"
-        
-        if self.send_command(command):
-            time.sleep(self.gripper_speed / 1000)
-            self.gripper_open = True
-            print("    [GRIPPER] Open")
-            return True
-        else:
-            # Simulation
-            print("    [SIM] Gripper opened")
-            time.sleep(0.8)
-            self.gripper_open = True
+        try:
+            if self.connected and self.arm:
+                # Method 1: Using Arm_Device
+                if hasattr(self.arm, 'Arm_serial_servo_write'):
+                    # Servo 6 is usually gripper on Yahboom DOFBOT
+                    # Adjust servo number based on your arm!
+                    self.arm.Arm_serial_servo_write(6, 180, 800)  # 180 = open
+                    time.sleep(0.8)
+                    self.gripper_open = True
+                    print("    [GRIPPER] PHYSICALLY Opened (servo 6)")
+                    return True
+                
+                # Method 2: Different library method
+                elif hasattr(self.arm, 'set_servo_angle'):
+                    self.arm.set_servo_angle(6, 180, 800)
+                    time.sleep(0.8)
+                    self.gripper_open = True
+                    print("    [GRIPPER] PHYSICALLY Opened")
+                    return True
+                
+                else:
+                    print("    ❌ Unknown arm control method")
+                    return False
+            
+            else:
+                # Simulation mode
+                print("    [SIM] Gripper would open")
+                time.sleep(0.8)
+                self.gripper_open = True
+                return True
+                
+        except Exception as e:
+            print(f"    ❌ Failed to open gripper: {e}")
             return False
     
     def close_gripper(self):
-        """Close the gripper"""
-        print("    [GRIPPER] Closing...")
-        
-        command = f"#{self.SERVO_GRIPPER} P{self.GRIPPER_CLOSED_PULSE} T{self.gripper_speed}"
-        
-        if self.send_command(command):
-            time.sleep(self.gripper_speed / 1000)
-            self.gripper_open = False
-            print("    [GRIPPER] Closed")
-            return True
-        else:
-            # Simulation
-            print("    [SIM] Gripper closed")
-            time.sleep(0.8)
-            self.gripper_open = False
-            return False
-    
-    def execute_grip_sequence(self):
-        """Execute open→close→open sequence"""
-        if self.is_acting:
-            return
-        
-        current_time = time.time()
-        if current_time - self.last_action_time < self.action_cooldown:
-            return
-        
-        self.is_acting = True
+        """REALLY close the gripper - PHYSICAL MOVEMENT"""
+        print("    [GRIPPER] PHYSICALLY Closing...")
         
         try:
-            # Close gripper
-            self.close_gripper()
-            time.sleep(0.5)  # Hold closed
+            if self.connected and self.arm:
+                # Method 1: Using Arm_Device
+                if hasattr(self.arm, 'Arm_serial_servo_write'):
+                    # Servo 6, angle 0-30 = closed (adjust based on your arm)
+                    self.arm.Arm_serial_servo_write(6, 30, 800)  # 30 = closed
+                    time.sleep(0.8)
+                    self.gripper_open = False
+                    print("    [GRIPPER] PHYSICALLY Closed (servo 6)")
+                    return True
+                
+                # Method 2: Different library method
+                elif hasattr(self.arm, 'set_servo_angle'):
+                    self.arm.set_servo_angle(6, 30, 800)
+                    time.sleep(0.8)
+                    self.gripper_open = False
+                    print("    [GRIPPER] PHYSICALLY Closed")
+                    return True
+                
+                else:
+                    print("    ❌ Unknown arm control method")
+                    return False
             
-            # Open gripper
-            self.open_gripper()
-            
-            print("✅ Grip sequence completed")
-            
+            else:
+                # Simulation mode
+                print("    [SIM] Gripper would close")
+                time.sleep(0.8)
+                self.gripper_open = False
+                return True
+                
         except Exception as e:
-            print(f"❌ Grip sequence failed: {e}")
-        
-        finally:
-            self.is_acting = False
-            self.last_action_time = time.time()
+            print(f"    ❌ Failed to close gripper: {e}")
+            return False
     
-    def quick_test(self):
-        """Quick test of gripper"""
-        print("\n🔧 Testing gripper...")
-        self.open_gripper()
+    def test_gripper(self):
+        """Test gripper open/close sequence"""
+        print("\n🔧 Testing REAL gripper movement...")
+        success1 = self.open_gripper()
         time.sleep(1)
-        self.close_gripper()
+        success2 = self.close_gripper()
         time.sleep(1)
-        self.open_gripper()
-        print("✅ Test complete")
+        success3 = self.open_gripper()
+        
+        if success1 and success2 and success3:
+            print("✅ Gripper test SUCCESSFUL - Arm should have MOVED")
+            return True
+        else:
+            print("❌ Gripper test FAILED")
+            return False
 
 # ============================================
-# SIMPLE VISION SYSTEM
+# DETECTION AND CONTROL SYSTEM
 # ============================================
-class SimpleVisionSystem:
+class ObjectDetectionGripper:
     def __init__(self):
+        # Initialize REAL Yahboom arm
+        print("🔌 Initializing Yahboom Arm...")
+        self.arm = RealYahboomArm()
+        
         # Setup camera
+        print("📷 Setting up camera...")
         self.cap = self.setup_camera()
         if self.cap is None:
             print("❌ ERROR: No camera found!")
             exit()
         
         # Load YOLO
+        print("🤖 Loading YOLO model...")
         self.model = self.load_yolo()
         
-        # Initialize gripper
-        self.gripper = SimpleGripperControl()
-        
-        # Detection tracking
-        self.last_detection_time = 0
-        self.detection_cooldown = 3.0  # Min seconds between actions
-        self.object_detected = False
-        self.current_class = None
-        self.confidence = 0
+        # Detection settings
+        self.detection_threshold = 0.6  # 60% confidence
+        self.cooldown_time = 3.0  # seconds between actions
+        self.last_action_time = 0
+        self.is_gripper_active = False
         
         # FPS tracking
         self.fps = 0
@@ -209,43 +248,50 @@ class SimpleVisionSystem:
         # Display
         self.show_info = True
         
-        print("\n✅ System ready!")
-        print("Controls:")
-        print("  t - Test gripper (open/close)")
+        print("\n" + "="*60)
+        print("✅ SYSTEM READY!")
+        print("="*60)
+        print("\n🎯 HOW TO USE:")
+        print("1. Point camera at a tool (screwdriver, hammer, etc.)")
+        print("2. When detected, gripper will CLOSE then OPEN")
+        print("3. Move to another tool to repeat")
+        print("\n📋 CONTROLS:")
+        print("  t - Test gripper manually")
+        print("  s - Show/hide info")
         print("  q - Quit")
-        print("=" * 60)
+        print("="*60)
     
     def setup_camera(self):
-        """Setup camera"""
+        """Setup webcam"""
         for i in range(4):
-            cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
-            if cap.isOpened():
-                print(f"✅ Camera {i} found")
-                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                cap.set(cv2.CAP_PROP_FPS, 30)
-                return cap
+            try:
+                cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
+                if cap.isOpened():
+                    print(f"✅ Found camera at index {i}")
+                    # Set resolution
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    cap.set(cv2.CAP_PROP_FPS, 30)
+                    return cap
+            except:
+                continue
         return None
     
     def load_yolo(self):
         """Load YOLO model"""
         try:
-            model = YOLO('best.pt')
-            model.overrides['conf'] = 0.5
-            model.overrides['iou'] = 0.3
-            model.overrides['max_det'] = 1  # Only care about first detection
-            model.overrides['verbose'] = False
-            print("✅ YOLO loaded")
+            model = YOLO('best.pt')  # Your trained model
+            print("✅ YOLO model loaded successfully")
             return model
         except Exception as e:
-            print(f"⚠️ YOLO failed: {e}")
+            print(f"⚠️ Could not load YOLO: {e}")
+            print("⚠️ Running in camera-only mode")
             return None
     
-    def process_frame(self, frame):
-        """Process frame for detection"""
+    def detect_objects(self, frame):
+        """Detect objects in frame"""
         if self.model is None:
-            return False, None, 0
+            return [], []
         
         try:
             # Run inference
@@ -261,157 +307,215 @@ class SimpleVisionSystem:
                 confidences = results[0].boxes.conf.cpu().numpy()
                 class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
                 
-                if len(boxes) > 0:
-                    # Get best detection
-                    best_idx = np.argmax(confidences)
-                    bbox = boxes[best_idx]
-                    confidence = confidences[best_idx]
-                    class_id = class_ids[best_idx]
-                    
-                    # Class names
-                    class_names = {
-                        0: 'Bolt', 1: 'Hammer', 2: 'Measuring Tape',
-                        3: 'Plier', 4: 'Screwdriver', 5: 'Wrench'
-                    }
-                    
-                    class_name = class_names.get(class_id, f"Class_{class_id}")
-                    
-                    return True, class_name, confidence*100
-                    
+                # Class names from your model
+                class_names = {
+                    0: 'Bolt', 1: 'Hammer', 2: 'Measuring Tape',
+                    3: 'Plier', 4: 'Screwdriver', 5: 'Wrench'
+                }
+                
+                return boxes, confidences, class_ids, class_names
+        
         except Exception as e:
             print(f"⚠️ Detection error: {e}")
         
-        return False, None, 0
+        return [], [], [], {}
     
-    def handle_detection(self, detected, class_name, confidence):
-        """Handle object detection - trigger gripper"""
+    def trigger_gripper_sequence(self):
+        """Trigger the gripper sequence in a separate thread"""
+        if self.is_gripper_active:
+            return
+        
         current_time = time.time()
+        if current_time - self.last_action_time < self.cooldown_time:
+            return
         
-        if detected:
-            self.object_detected = True
-            self.current_class = class_name
-            self.confidence = confidence
-            
-            # Check if enough time has passed since last action
-            if current_time - self.last_detection_time > self.detection_cooldown:
-                print(f"\n🎯 OBJECT DETECTED: {class_name} ({confidence:.1f}%)")
-                print("   🤖 Triggering gripper sequence...")
-                
-                # Run gripper in separate thread
-                threading.Thread(target=self.gripper.execute_grip_sequence, 
-                               daemon=True).start()
-                
-                self.last_detection_time = current_time
+        self.is_gripper_active = True
         
-        else:
-            self.object_detected = False
+        # Run in separate thread to not block video
+        threading.Thread(target=self._gripper_sequence, daemon=True).start()
     
-    def draw_display(self, frame, detected, class_name, confidence):
-        """Draw information on frame"""
+    def _gripper_sequence(self):
+        """Actual gripper sequence"""
+        try:
+            self.last_action_time = time.time()
+            
+            # 1. Close gripper
+            success1 = self.arm.close_gripper()
+            
+            if success1:
+                # 2. Hold for a moment
+                time.sleep(0.5)
+                
+                # 3. Open gripper
+                success2 = self.arm.open_gripper()
+                
+                if success2:
+                    print("✅ Gripper sequence COMPLETED - Arm MOVED")
+                else:
+                    print("❌ Failed to open gripper")
+            else:
+                print("❌ Failed to close gripper")
+                
+        except Exception as e:
+            print(f"❌ Gripper sequence error: {e}")
+        
+        finally:
+            self.is_gripper_active = False
+    
+    def process_frame(self, frame):
+        """Process each frame"""
+        # Flip for mirror view
+        frame = cv2.flip(frame, 1)
+        
+        # Update FPS
+        self.frame_count += 1
+        current_time = time.time()
+        elapsed = current_time - self.start_time
+        if elapsed >= 1.0:
+            self.fps = self.frame_count / elapsed
+            self.frame_count = 0
+            self.start_time = current_time
+        
+        # Detect objects
+        boxes, confidences, class_ids, class_names = self.detect_objects(frame)
+        
+        object_detected = False
+        best_confidence = 0
+        best_class = ""
+        
+        # Check if any detection meets threshold
+        for i, confidence in enumerate(confidences):
+            if confidence >= self.detection_threshold:
+                object_detected = True
+                if confidence > best_confidence:
+                    best_confidence = confidence
+                    class_id = class_ids[i]
+                    best_class = class_names.get(class_id, f"Object {class_id}")
+        
+        # Trigger gripper if object detected
+        if object_detected:
+            print(f"🎯 Detected: {best_class} ({best_confidence*100:.1f}%)")
+            self.trigger_gripper_sequence()
+        
+        # Draw on frame
+        display_frame = self.draw_display(frame, boxes, confidences, class_ids, 
+                                         class_names, object_detected, best_class, best_confidence)
+        
+        return display_frame, object_detected, best_class, best_confidence
+    
+    def draw_display(self, frame, boxes, confidences, class_ids, class_names,
+                    object_detected, best_class, best_confidence):
+        """Draw everything on frame"""
         display = frame.copy()
         
-        # Draw detection box if object detected
-        if detected:
-            # Draw a rectangle around the center
-            h, w = frame.shape[:2]
-            center_x, center_y = w//2, h//2
-            box_size = 100
-            
-            # Draw pulsing box
-            pulse = int(50 * (1 + np.sin(time.time() * 5) * 0.3))
-            cv2.rectangle(display, 
-                         (center_x - box_size, center_y - box_size),
-                         (center_x + box_size, center_y + box_size),
-                         (0, 255, 0), pulse//10)
-            
-            # Draw text
-            text = f"{class_name}: {confidence:.1f}%"
-            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
-            text_x = (w - text_size[0]) // 2
-            
-            cv2.putText(display, text, (text_x, 40),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
-            # Draw "ACTIVE" indicator
-            if self.gripper.is_acting:
-                cv2.putText(display, "GRIPPER ACTIVE", (w//2 - 100, h - 30),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
+        # Draw detection boxes
+        for i, box in enumerate(boxes):
+            if confidences[i] >= 0.4:  # Lower threshold for display
+                x1, y1, x2, y2 = map(int, box)
+                class_id = class_ids[i]
+                confidence = confidences[i]
+                
+                # Color based on class
+                colors = [
+                    (0, 255, 0),    # Green - Bolt
+                    (0, 0, 255),    # Red - Hammer
+                    (255, 0, 0),    # Blue - Measuring Tape
+                    (255, 255, 0),  # Cyan - Plier
+                    (255, 0, 255),  # Magenta - Screwdriver
+                    (0, 255, 255)   # Yellow - Wrench
+                ]
+                color = colors[class_id % len(colors)]
+                
+                # Draw box
+                cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
+                
+                # Draw label
+                label = f"{class_names.get(class_id, 'Unknown')}: {confidence*100:.1f}%"
+                cv2.putText(display, label, (x1, y1-10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         
         # Draw info panel
         if self.show_info:
-            # Background
-            cv2.rectangle(display, (10, 10), (300, 130), (0, 0, 0, 180), -1)
-            cv2.rectangle(display, (10, 10), (300, 130), (255, 255, 255), 1)
+            # Semi-transparent background
+            overlay = display.copy()
+            cv2.rectangle(overlay, (10, 10), (350, 180), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.7, display, 0.3, 0, display)
+            cv2.rectangle(display, (10, 10), (350, 180), (255, 255, 255), 1)
             
             y = 35
-            line = 25
+            line_height = 25
+            
+            # Title
+            cv2.putText(display, "🤖 YAHBOOM GRIPPER CONTROL", (15, y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            y += line_height
             
             # Status
-            status = "OBJECT DETECTED" if detected else "SEARCHING"
-            color = (0, 255, 0) if detected else (255, 255, 0)
-            cv2.putText(display, f"Status: {status}", (20, y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 1)
-            y += line
+            if object_detected:
+                status_color = (0, 255, 0)
+                status_text = f"DETECTED: {best_class}"
+            else:
+                status_color = (255, 255, 0)
+                status_text = "SEARCHING..."
+            
+            cv2.putText(display, status_text, (15, y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_color, 1)
+            y += line_height
             
             # FPS
-            cv2.putText(display, f"FPS: {self.fps:.1f}", (20, y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-            y += line
+            cv2.putText(display, f"FPS: {self.fps:.1f}", (15, y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 1)
+            y += line_height
             
-            # Arm connection
-            arm_status = "CONNECTED" if self.gripper.connected else "SIMULATION"
-            arm_color = (0, 255, 0) if self.gripper.connected else (255, 0, 0)
-            cv2.putText(display, f"Arm: {arm_status}", (20, y),
+            # Arm status
+            arm_status = "✅ CONNECTED" if self.arm.connected else "❌ SIMULATION"
+            arm_color = (0, 255, 0) if self.arm.connected else (255, 0, 0)
+            cv2.putText(display, f"ARM: {arm_status}", (15, y),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, arm_color, 1)
-            y += line
+            y += line_height
             
-            # Last action
-            time_since = time.time() - self.last_detection_time
-            if time_since < 10:
-                cv2.putText(display, f"Last action: {time_since:.1f}s ago", 
-                           (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 200, 0), 1)
+            # Gripper status
+            gripper_status = "OPEN" if self.arm.gripper_open else "CLOSED"
+            gripper_color = (0, 255, 0) if self.arm.gripper_open else (0, 0, 255)
+            cv2.putText(display, f"GRIPPER: {gripper_status}", (15, y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, gripper_color, 1)
+            y += line_height
+            
+            # Cooldown indicator
+            time_since = time.time() - self.last_action_time
+            if time_since < self.cooldown_time:
+                remaining = self.cooldown_time - time_since
+                cv2.putText(display, f"Next action in: {remaining:.1f}s", 
+                           (15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 100, 0), 1)
+        
+        # Draw center marker
+        h, w = display.shape[:2]
+        cv2.circle(display, (w//2, h//2), 8, (255, 255, 255), 1)
+        cv2.circle(display, (w//2, h//2), 4, (0, 255, 0), -1)
         
         return display
     
     def run(self):
         """Main loop"""
-        print("\n🎬 Starting simple gripper control...")
-        print("📸 Point camera at an object to trigger gripper")
-        print("⏱️  Cooldown: 3 seconds between actions")
-        time.sleep(1)
+        print("\n🚀 Starting detection system...")
+        print("📸 Camera feed starting in 2 seconds...")
+        time.sleep(2)
         
         try:
             while True:
                 # Read frame
                 ret, frame = self.cap.read()
                 if not ret:
-                    print("❌ Can't receive frame")
+                    print("❌ Can't read from camera")
                     break
                 
-                # Mirror frame
-                frame = cv2.flip(frame, 1)
-                
-                # Update FPS
-                self.frame_count += 1
-                elapsed = time.time() - self.start_time
-                if elapsed >= 1.0:
-                    self.fps = self.frame_count / elapsed
-                    self.frame_count = 0
-                    self.start_time = time.time()
-                
-                # Process detection
-                detected, class_name, confidence = self.process_frame(frame)
-                
-                # Handle detection (trigger gripper)
-                self.handle_detection(detected, class_name, confidence)
-                
-                # Draw display
-                display = self.draw_display(frame, detected, class_name, confidence)
+                # Process frame
+                display_frame, detected, obj_class, confidence = self.process_frame(frame)
                 
                 # Show frame
-                cv2.imshow('Simple Gripper Control - Object Detection', display)
+                cv2.imshow('Yahboom Gripper Control - Object Detection', display_frame)
                 
-                # Keyboard controls
+                # Handle keyboard
                 key = cv2.waitKey(1) & 0xFF
                 
                 if key == ord('q'):
@@ -420,165 +524,134 @@ class SimpleVisionSystem:
                 
                 elif key == ord('t'):
                     print("\n🔧 Manual gripper test...")
-                    self.gripper.quick_test()
+                    self.arm.test_gripper()
                 
-                elif key == ord(' '):
+                elif key == ord('s'):
                     self.show_info = not self.show_info
                     print(f"ℹ️ Info display: {'ON' if self.show_info else 'OFF'}")
+                
+                elif key == ord(' '):
+                    # Quick action on spacebar
+                    print("\n⚡ Manual trigger...")
+                    self.trigger_gripper_sequence()
         
         except KeyboardInterrupt:
-            print("\n🛑 Interrupted")
+            print("\n🛑 Interrupted by user")
         
         finally:
             self.cleanup()
     
     def cleanup(self):
-        """Cleanup"""
-        self.cap.release()
+        """Cleanup resources"""
+        print("\n🧹 Cleaning up...")
+        
+        # Release camera
+        if self.cap:
+            self.cap.release()
+        
+        # Close all OpenCV windows
         cv2.destroyAllWindows()
         
         # Make sure gripper is open
-        if hasattr(self, 'gripper'):
-            self.gripper.open_gripper()
+        print("🤖 Opening gripper before exit...")
+        self.arm.open_gripper()
         
-        print("\n✅ Cleanup complete")
-        print("🤖 Gripper should be open")
+        print("✅ Cleanup complete")
 
 # ============================================
-# CALIBRATION TEST SCRIPT
+# INSTALLATION CHECK SCRIPT
 # ============================================
-def calibrate_gripper():
-    """First, calibrate your gripper"""
-    print("\n" + "="*60)
-    print("🔧 GRIPPER CALIBRATION")
-    print("="*60)
+def check_installation():
+    """Check if Yahboom libraries are installed"""
+    print("🔍 Checking Yahboom installation...")
     
-    try:
-        import serial
-        import serial.tools.list_ports
+    # Common Yahboom library paths
+    common_paths = [
+        '/home/pi/ArmPi/',
+        '/home/pi/yahboom/',
+        '/home/pi/',
+        '/opt/yahboom/'
+    ]
+    
+    print("\n📁 Checking common paths:")
+    for path in common_paths:
+        if os.path.exists(path):
+            print(f"  ✅ Found: {path}")
+            # List files
+            try:
+                files = os.listdir(path)
+                for file in files:
+                    if 'arm' in file.lower() or 'dof' in file.lower():
+                        print(f"    📄 {file}")
+            except:
+                pass
+        else:
+            print(f"  ❌ Not found: {path}")
+    
+    # Check Python imports
+    print("\n🐍 Checking Python imports:")
+    
+    import importlib.util
+    
+    libraries_to_check = ['Arm_Lib', 'dofbot', 'yahboom_arm', 'ArmPi']
+    
+    for lib in libraries_to_check:
+        spec = importlib.util.find_spec(lib)
+        if spec is not None:
+            print(f"  ✅ {lib} is importable")
+            print(f"     Location: {spec.origin}")
+        else:
+            print(f"  ❌ {lib} not found")
+    
+    # Ask user for library location
+    print("\n" + "="*60)
+    print("❓ Can't find Yahboom library?")
+    print("="*60)
+    print("Please provide the path to your Yahboom library.")
+    print("Common locations:")
+    print("  /home/pi/ArmPi/Arm_Lib.py")
+    print("  /home/pi/yahboom/Arm_Lib.py")
+    print("  /home/pi/dofbot.py")
+    print("\nOr enter 'skip' to continue with simulation mode.")
+    
+    user_path = input("\nEnter library path (or 'skip'): ").strip()
+    
+    if user_path.lower() != 'skip' and os.path.exists(user_path):
+        # Add to path
+        dir_path = os.path.dirname(user_path)
+        sys.path.append(dir_path)
+        print(f"✅ Added {dir_path} to Python path")
         
-        # Find port
-        ports = list(serial.tools.list_ports.comports())
-        if not ports:
-            print("❌ No serial ports found!")
-            return None, None
+        # Try to import
+        lib_name = os.path.basename(user_path).replace('.py', '')
+        print(f"Attempting to import {lib_name}...")
         
-        print("Available ports:")
-        for p in ports:
-            print(f"  {p.device}: {p.description}")
-        
-        # Try to auto-select
-        target_port = None
-        for p in ports:
-            if 'USB' in p.description or 'ACM' in p.device:
-                target_port = p.device
-                break
-        
-        if target_port is None:
-            target_port = ports[0].device
-        
-        print(f"\n🔗 Using port: {target_port}")
-        print("⚠️ Make sure Yahboom arm is powered ON!")
-        
-        # Connect
-        ser = serial.Serial(target_port, 115200, timeout=1)
-        time.sleep(2)
-        
-        print("✅ Connected!")
-        print("\n🎮 Manual calibration controls:")
-        print("  o - Open gripper")
-        print("  c - Close gripper")
-        print("  t - Test sequence (open→close→open)")
-        print("  s - Save current pulse values")
-        print("  q - Quit calibration")
-        
-        # Test values
-        open_pulse = 700
-        closed_pulse = 1300
-        
-        while True:
-            print(f"\nCurrent: OPEN={open_pulse}, CLOSED={closed_pulse}")
-            cmd = input("Enter command (o/c/t/s/q): ").strip().lower()
-            
-            if cmd == 'o':
-                ser.write(f"#5 P{open_pulse} T1000\r\n".encode())
-                time.sleep(1)
-                print("✅ Sent OPEN command")
-                
-            elif cmd == 'c':
-                ser.write(f"#5 P{closed_pulse} T1000\r\n".encode())
-                time.sleep(1)
-                print("✅ Sent CLOSE command")
-                
-            elif cmd == 't':
-                ser.write(f"#5 P{open_pulse} T1000\r\n".encode())
-                time.sleep(1.2)
-                ser.write(f"#5 P{closed_pulse} T1000\r\n".encode())
-                time.sleep(1.2)
-                ser.write(f"#5 P{open_pulse} T1000\r\n".encode())
-                time.sleep(1.2)
-                print("✅ Test sequence complete")
-                
-            elif cmd == 's':
-                print(f"\n💾 Save these values in the main script:")
-                print(f"   self.GRIPPER_OPEN_PULSE = {open_pulse}")
-                print(f"   self.GRIPPER_CLOSED_PULSE = {closed_pulse}")
-                
-            elif cmd == 'q':
-                # Open before quitting
-                ser.write(f"#5 P{open_pulse} T1000\r\n".encode())
-                time.sleep(1)
-                ser.close()
-                print("✅ Calibration complete")
-                return open_pulse, closed_pulse
-            
-            else:
-                # Try to parse pulse value
-                try:
-                    new_pulse = int(cmd)
-                    if 500 <= new_pulse <= 2500:
-                        ser.write(f"#5 P{new_pulse} T1000\r\n".encode())
-                        time.sleep(1)
-                        print(f"✅ Set to {new_pulse}")
-                        
-                        # Ask which value this is
-                        which = input("Is this OPEN or CLOSED position? (o/c): ").lower()
-                        if which == 'o':
-                            open_pulse = new_pulse
-                        elif which == 'c':
-                            closed_pulse = new_pulse
-                    else:
-                        print("❌ Pulse must be 500-2500")
-                except:
-                    print("❌ Invalid command")
-        
-    except Exception as e:
-        print(f"❌ Calibration failed: {e}")
-        return None, None
+        try:
+            module = __import__(lib_name)
+            print(f"✅ Successfully imported {lib_name}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to import: {e}")
+            return False
+    else:
+        print("⚠️ Continuing with simulation mode")
+        return False
 
 # ============================================
 # MAIN
 # ============================================
 if __name__ == "__main__":
-    print("="*60)
-    print("🤖 SIMPLE GRIPPER CONTROL SYSTEM")
-    print("="*60)
+    print("="*70)
+    print("🤖 REAL YAHBOOM GRIPPER CONTROL SYSTEM")
+    print("="*70)
     
-    # Ask if user wants to calibrate first
-    calibrate = input("\n🔧 Calibrate gripper first? (y/n): ").strip().lower()
+    # Check installation first
+    check_installation()
     
-    if calibrate == 'y':
-        open_pulse, closed_pulse = calibrate_gripper()
-        if open_pulse and closed_pulse:
-            print(f"\n📝 Update these in SimpleGripperControl class:")
-            print(f"   self.GRIPPER_OPEN_PULSE = {open_pulse}")
-            print(f"   self.GRIPPER_CLOSED_PULSE = {closed_pulse}")
-            input("\nPress Enter to continue after updating the code...")
-    
-    # Run the main system
-    print("\n" + "="*60)
+    print("\n" + "="*70)
     print("🚀 Starting main system...")
-    print("="*60)
+    print("="*70)
     
-    system = SimpleVisionSystem()
+    # Create and run system
+    system = ObjectDetectionGripper()
     system.run()
