@@ -26,11 +26,12 @@ class YahboomI2CArm:
         
         # I2C Parameters (DEFAULT for Yahboom DOFBOT)
         self.I2C_ADDR = 0x15          # Default Yahboom I2C address
-        self.I2C_BUS = 1              # Raspberry Pi I2C bus 1 (GPIO 2/3)
+        self.I2C_BUS = 6              # Raspberry Pi I2C bus 1 (GPIO 2/3)
         
         # Servo mapping (Yahboom DOFBOT)
-        # Servo 1: Base, 2: Shoulder, 3: Elbow, 4: Wrist, 5: Gripper, 6: Wrist rotation
-        self.SERVO_GRIPPER = 5        # Usually servo 5 for gripper
+        # Servo 1: Base, 2: Shoulder, 3: Elbow, 4: Wrist, 5: Gripper, 6: Wrist rotationy
+        
+        self.SERVO_GRIPPER = 6        # Usually servo 5 for gripper
         
         # Angle limits (adjust for your gripper!)
         self.GRIPPER_OPEN_ANGLE = 180     # Degrees for open

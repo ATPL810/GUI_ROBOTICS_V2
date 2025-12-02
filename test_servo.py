@@ -17,9 +17,9 @@ try:
     print("Testing servo movements...")
     
     # Test each servo
-    for servo in range(1, 7):
+    for servo in range(3, 5):
         print(f"Moving servo {servo} to 90 degrees...")
-        arm.Arm_serial_servo_write(servo, 90, 1000)
+        arm.Arm_serial_servo_write(servo, 35, 1000)
         time.sleep(1)
     
     print("✅ Arm test complete!")
