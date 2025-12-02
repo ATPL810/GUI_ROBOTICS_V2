@@ -5,5 +5,5 @@ opencv-python
 Pillow
 numpy
 Arm_Lib
-yahboom_arm_lib
+pyserial 
 yahboom
