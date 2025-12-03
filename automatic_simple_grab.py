@@ -11,6 +11,7 @@ import threading
 import sys
 import os
 
+
 print("🤖 YAHBOOM AUTOMATIC OBJECT SORTING SYSTEM")
 print("=" * 70)
 
@@ -430,7 +431,7 @@ class AutomaticSortingSystem:
     
     def load_yolo_model(self):
         """Load YOLO model"""
-        model_files = ['best.pt', 'yolov8n.pt', 'yolo11n.pt']
+        model_files = ['best_2s.pt']
         
         for model_file in model_files:
             if os.path.exists(model_file):

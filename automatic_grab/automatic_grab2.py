@@ -864,7 +864,7 @@ class RoboticVisionSystem:
         self.last_search_time = time.time()
         
         # Detection parameters
-        self.detection_interval = 3
+        self.detection_interval = 1 # Process every frame
         self.frame_index = 0
         
         # Display settings
@@ -919,7 +919,7 @@ class RoboticVisionSystem:
         """Load YOLO model"""
         print("📦 Loading YOLO model...")
         
-        model_paths = ['best.pt', 'yolo11n.pt', 'yolov8n.pt']
+        model_paths = ['./best_2s.pt']
         
         for path in model_paths:
             if os.path.exists(path):

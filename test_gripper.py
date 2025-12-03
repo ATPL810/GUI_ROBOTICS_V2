@@ -878,6 +878,7 @@ from ultralytics import YOLO
 import threading
 import sys
 import os
+import smbus
 
 print("🤖 YAHBOOM I2C GRIPPER CONTROL - SERVO 6")
 print("=" * 70)
@@ -1226,7 +1227,7 @@ class ObjectDetectionGripperControl:
     
     def load_yolo_model(self):
         """Load YOLO model"""
-        model_files = ['best.pt', 'yolov8n.pt', 'yolo11n.pt']
+        model_files = ['best_2s.pt']
         
         for model_file in model_files:
             if os.path.exists(model_file):
@@ -1378,7 +1379,7 @@ class ObjectDetectionGripperControl:
             
             # Detection text
             text = f"{obj_name}: {confidence:.1f}%"
-            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
+            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 2)[0]
             text_x = (w - text_size[0]) // 2
             
             cv2.putText(display, text, (text_x, 50),
@@ -1387,15 +1388,15 @@ class ObjectDetectionGripperControl:
         # Draw info panel
         if self.show_info:
             # Background
-            cv2.rectangle(display, (10, 10), (380, 200), (0, 0, 0, 180), -1)
-            cv2.rectangle(display, (10, 10), (380, 200), (255, 255, 255), 1)
+            cv2.rectangle(display, (10, 10), (200, 160), (0, 0, 0, 180), -1)
+            cv2.rectangle(display, (10, 10), (00, 160), (255, 255, 255), 1)
             
             y = 35
             line = 25
             
             # Title
             cv2.putText(display, "🤖 SERVO 6 GRIPPER CONTROL", (15, y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.2, (0, 255, 255), 2)
             y += line
             
             # Arm status

@@ -10,11 +10,10 @@ import numpy as np
 import time
 import json
 import os
-from pathlib import Path
-import threading
+# from pathlib import Path
+# import threading
 from Arm_Lib import Arm_Device
-import torch
-import torch.backends.cudnn as cudnn
+from ultralytics import YOLO
 
 class GarageAssistant:
     def __init__(self, yolo_model_path="best.pt", calibration_file="calibration.json"):
@@ -71,15 +70,16 @@ class GarageAssistant:
     def load_yolo_model(self, model_path):
         """Load YOLOv5 model"""
         try:
-            # Use YOLOv5 from torch hub
-            model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path)
-            model.conf = 0.6  # Confidence threshold
-            model.iou = 0.45  # NMS IoU threshold
-            if torch.cuda.is_available():
-                model.cuda()
-                cudnn.benchmark = True
-            print(f"YOLO model loaded from {model_path}")
-            return model
+            # # Use YOLOv5 from torch hub
+            # model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path)
+            # model.conf = 0.6  # Confidence threshold
+            # model.iou = 0.45  # NMS IoU threshold
+            # if torch.cuda.is_available():
+            #     model.cuda()
+            #     cudnn.benchmark = True
+            # print(f"YOLO model loaded from {model_path}")
+
+            return YOLO('best_2s.pt') 
         except Exception as e:
             print(f"Error loading YOLO model: {e}")
             return None
