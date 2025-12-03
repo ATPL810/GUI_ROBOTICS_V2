@@ -1,7 +1,6 @@
 """
 FULLY AUTOMATIC ROBOTIC ARM SYSTEM
-Takes 3 snapshots (front, right, left) and saves images with detections
-Grabs all detected objects sequentially
+Takes 3 snapshots from different positions (front, right, left)
 """
 
 import cv2
@@ -18,7 +17,7 @@ print("🤖 FULLY AUTOMATIC ROBOTIC ARM SYSTEM - 3 POSITION SCAN")
 print("=" * 70)
 
 # ============================================
-# ARM_LIB SERVO CONTROL - SIMPLIFIED
+# ARM_LIB SERVO CONTROL
 # ============================================
 class ArmController:
     def __init__(self):
@@ -37,7 +36,7 @@ class ArmController:
             ARM_LIB_AVAILABLE = False
             return
         
-        # Servo mapping (YOUR SPECIFIED ANGLES)
+        # Servo mapping
         self.SERVO_BASE = 1       # Servo 1: Base
         self.SERVO_SHOULDER = 2   # Servo 2: Shoulder  
         self.SERVO_ELBOW = 3      # Servo 3: Elbow
@@ -45,39 +44,40 @@ class ArmController:
         self.SERVO_WRIST_ROT = 5  # Servo 5: Wrist rotation
         self.SERVO_GRIPPER = 6    # Servo 6: Gripper
         
-        # YOUR SPECIFIED NEUTRAL ANGLES (FRONT POSITION)
-        self.NEUTRAL_ANGLES = {
-            self.SERVO_BASE: 90,      # Your specified: 90
-            self.SERVO_SHOULDER: 115, # Your specified: 115
-            self.SERVO_ELBOW: 4,      # Your specified: 4
-            self.SERVO_WRIST: 15,     # Your specified: 15
-            self.SERVO_WRIST_ROT: 90, # Your specified: 90
-            self.SERVO_GRIPPER: 70    # Gripper open (adjust as needed)
-        }
-        
-        # Position angles for 3 snapshots
+        # Different positions for 3 snapshots
+        # IMPORTANT: These angles should give you different camera views
         self.POSITION_ANGLES = {
             'front': {
-                self.SERVO_BASE: 90,      # Center
-                self.SERVO_SHOULDER: 115,
-                self.SERVO_ELBOW: 4,
-                self.SERVO_WRIST: 15,
-                self.SERVO_WRIST_ROT: 90,
+                self.SERVO_BASE: 90,      # Center - looking forward
+                self.SERVO_SHOULDER: 115, # Shoulder up
+                self.SERVO_ELBOW: 4,      # Elbow down
+                self.SERVO_WRIST: 15,     # Wrist level
+                self.SERVO_WRIST_ROT: 90, # Wrist rotation neutral
             },
             'right': {
-                self.SERVO_BASE: 135,     # Right side
-                self.SERVO_SHOULDER: 115,
-                self.SERVO_ELBOW: 4,
-                self.SERVO_WRIST: 15,
-                self.SERVO_WRIST_ROT: 90,
+                self.SERVO_BASE: 135,     # Turned right - looking right side
+                self.SERVO_SHOULDER: 115, # Same shoulder
+                self.SERVO_ELBOW: 4,      # Same elbow
+                self.SERVO_WRIST: 15,     # Same wrist
+                self.SERVO_WRIST_ROT: 90, # Same wrist rotation
             },
             'left': {
-                self.SERVO_BASE: 45,      # Left side
-                self.SERVO_SHOULDER: 115,
-                self.SERVO_ELBOW: 4,
-                self.SERVO_WRIST: 15,
-                self.SERVO_WRIST_ROT: 90,
+                self.SERVO_BASE: 45,      # Turned left - looking left side
+                self.SERVO_SHOULDER: 115, # Same shoulder
+                self.SERVO_ELBOW: 4,      # Same elbow
+                self.SERVO_WRIST: 15,     # Same wrist
+                self.SERVO_WRIST_ROT: 90, # Same wrist rotation
             }
+        }
+        
+        # Drop zone position
+        self.DROP_ZONE_ANGLES = {
+            self.SERVO_BASE: 135,   # Base turned right for drop zone
+            self.SERVO_SHOULDER: 100,
+            self.SERVO_ELBOW: 20,
+            self.SERVO_WRIST: 15,
+            self.SERVO_WRIST_ROT: 90,
+            self.SERVO_GRIPPER: 110  # Will be closed initially
         }
         
         # Gripper settings
@@ -85,8 +85,9 @@ class ArmController:
         self.GRIPPER_CLOSED = 110
         
         # Current state
-        self.current_angles = [0] + list(self.NEUTRAL_ANGLES.values())  # Index 0 unused
+        self.current_angles = [0] + [90, 115, 4, 15, 90, 70]  # Default angles
         self.gripper_open = True
+        self.current_position = 'front'
         
         # Initialize
         self.initialize_arm()
@@ -97,13 +98,12 @@ class ArmController:
             self.arm = self.Arm_Device()
             time.sleep(2)
             
-            # Move to neutral position immediately
+            # Move to front position
             print("📸 Moving to FRONT position...")
             self.go_to_position('front')
             
             self.connected = True
-            print("✅ Arm initialized at front position")
-            print(f"   Front angles: {self.POSITION_ANGLES['front']}")
+            print("✅ Arm initialized")
             
         except Exception as e:
             print(f"⚠️ Arm init failed: {e}")
@@ -114,14 +114,34 @@ class ArmController:
         if position_name in self.POSITION_ANGLES:
             position_angles = self.POSITION_ANGLES[position_name].copy()
             position_angles[self.SERVO_GRIPPER] = self.GRIPPER_OPEN if self.gripper_open else self.GRIPPER_CLOSED
+            
+            print(f"\n   Moving to {position_name.upper()} position...")
+            print(f"   Target angles: Base={position_angles[1]}°, "
+                  f"Shoulder={position_angles[2]}°, "
+                  f"Elbow={position_angles[3]}°")
+            
             success = self.set_multiple_angles(position_angles, 2000)
-            print(f"   Moved to {position_name} position")
+            
+            if success:
+                self.current_position = position_name
+                print(f"✅ Now at {position_name} position")
+                # Add extra stabilization time for camera
+                print(f"   Waiting for camera stabilization...")
+                time.sleep(1.5)  # Extra time for camera to stabilize
             return success
         return False
     
-    def go_to_neutral(self):
-        """Move to front position"""
-        return self.go_to_position('front')
+    def go_to_drop_zone(self, keep_gripper_closed=True):
+        """Move to drop zone position"""
+        drop_angles = self.DROP_ZONE_ANGLES.copy()
+        if keep_gripper_closed:
+            drop_angles[self.SERVO_GRIPPER] = self.GRIPPER_CLOSED
+        else:
+            drop_angles[self.SERVO_GRIPPER] = self.GRIPPER_OPEN
+        
+        print("   Moving to drop zone...")
+        success = self.set_multiple_angles(drop_angles, 2000)
+        return success
     
     def set_servo_angle(self, servo_id, angle, move_time=1000):
         """Set single servo angle"""
@@ -181,7 +201,7 @@ class ArmController:
         return success
 
 # ============================================
-# COORDINATE SYSTEM WITH POSITION AWARENESS
+# COORDINATE SYSTEM
 # ============================================
 class PositionAwareCoordinateSystem:
     def __init__(self):
@@ -208,12 +228,11 @@ class PositionAwareCoordinateSystem:
             }
         }
         
-        print("📍 Position-aware coordinate system initialized")
+        print("📍 Coordinate system initialized")
     
     def calculate_servo_angles(self, pixel_x, pixel_y, bbox_width, bbox_height, current_position):
         """
         Calculate servo angles based on object position and current arm position
-        Returns: Dictionary of servo angles for pickup
         """
         # Center of image (where arm is pointing)
         center_x = 320
@@ -227,18 +246,15 @@ class PositionAwareCoordinateSystem:
         adj = self.position_adjustments[current_position]
         
         # Print coordinates to console
-        print(f"📐 [{current_position.upper()}] Object at: Pixel({pixel_x}, {pixel_y}), "
-              f"Offset({offset_x}, {offset_y}), Size({bbox_width}x{bbox_height})")
+        print(f"📐 [{current_position.upper()}] Object at: Pixel({pixel_x:.1f}, {pixel_y:.1f}), "
+              f"Offset({offset_x:.1f}, {offset_y:.1f}), Size({bbox_width:.1f}x{bbox_height:.1f})")
         
-        # Calculate base angle considering current position
+        # Calculate adjustments
         base_adjust = offset_x * adj['x_scale']
-        
-        # Adjust shoulder based on Y position and object size
         size_factor = (bbox_width * bbox_height) / (640 * 480)
         shoulder_adjust = offset_y * adj['y_scale'] + size_factor * 20
         
-        # Calculate target angles
-        # Base needs to be calculated relative to current position
+        # Calculate base angle based on current position
         if current_position == 'front':
             base_angle = 90 + base_adjust
         elif current_position == 'right':
@@ -248,18 +264,25 @@ class PositionAwareCoordinateSystem:
         else:
             base_angle = 90 + base_adjust
         
+        # Calculate elbow adjustment based on object size
+        elbow_adjust = size_factor * 8
+        
         target_angles = {
-            1: base_angle,               # Base (position-aware)
-            2: 115 + shoulder_adjust,    # Shoulder
-            3: 4 + (size_factor * 10),   # Elbow
-            4: 15,                       # Wrist
-            5: 90,                       # Wrist rotation
-            6: 70                        # Gripper (open)
+            1: base_angle,                     # Base
+            2: 115 + shoulder_adjust,          # Shoulder
+            3: 4 + elbow_adjust,               # Elbow
+            4: 15,                             # Wrist
+            5: 90,                             # Wrist rotation
+            6: 70                              # Gripper (open initially)
         }
         
         # Constrain angles
         for servo_id in target_angles:
             target_angles[servo_id] = max(0, min(180, target_angles[servo_id]))
+        
+        print(f"📐 Calculated Angles - Base: {target_angles[1]:.1f}°, "
+              f"Shoulder: {target_angles[2]:.1f}°, "
+              f"Elbow: {target_angles[3]:.1f}°")
         
         return target_angles
 
@@ -290,7 +313,6 @@ class ThreePositionAutoGrabSystem:
         # State
         self.is_grabbing = False
         self.grabbed_count = 0
-        self.max_grab_attempts = 3
         
         # Create output directory
         self.output_dir = self.create_output_directory()
@@ -316,6 +338,14 @@ class ThreePositionAutoGrabSystem:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                 cap.set(cv2.CAP_PROP_FPS, 30)
+                
+                # Test camera
+                ret, frame = cap.read()
+                if ret:
+                    print(f"   Camera test OK - Frame size: {frame.shape}")
+                else:
+                    print(f"   Camera test failed")
+                
                 return cap
         
         print("⚠️ No camera found")
@@ -345,32 +375,43 @@ class ThreePositionAutoGrabSystem:
     def capture_and_save_snapshot(self, position_name):
         """
         Capture a snapshot at current position, detect objects, and save image with detections
-        Returns: List of detections with position info
         """
-        print(f"\n📸 Capturing {position_name} snapshot...")
+        print(f"\n📸 CAPTURING {position_name.upper()} SNAPSHOT")
+        print(f"   Current arm position: {position_name}")
+        print(f"   Base servo angle: {self.arm.current_angles[1]}°")
         
-        # Ensure we're at the right position
-        # Wait slightly longer than the servo move time (2s) so the arm finishes moving
-        self.arm.go_to_position(position_name)
-        time.sleep(2.2)  # Wait for arm to stabilize
+        # Capture multiple frames to ensure we get a clear one
+        frames_to_capture = 3
+        best_frame = None
         
-        # Capture frame
-        if self.cap is not None:
-            ret, frame = self.cap.read()
-            if not ret:
-                print(f"⚠️ Failed to capture {position_name} snapshot")
-                return []
-        else:
-            # Create test frame if no camera
-            frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            cv2.putText(frame, f"{position_name.upper()} POSITION", 
-                       (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        for i in range(frames_to_capture):
+            if self.cap is not None:
+                ret, frame = self.cap.read()
+                if ret:
+                    if i == frames_to_capture - 1:  # Use the last frame
+                        best_frame = frame.copy()
+                        print(f"   Captured frame {i+1}/{frames_to_capture}")
+                    time.sleep(0.1)  # Small delay between frames
+            else:
+                # Create test frame if no camera
+                best_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(best_frame, f"{position_name.upper()} POSITION - Base: {self.arm.current_angles[1]}°", 
+                           (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                break
+        
+        if best_frame is None:
+            print(f"⚠️ Failed to capture {position_name} snapshot")
+            return []
+        
+        # Save raw frame first (for debugging)
+        raw_filename = f"{self.output_dir}/{position_name}_raw.jpg"
+        cv2.imwrite(raw_filename, best_frame)
         
         # Detect objects
-        detections = self.detect_objects(frame)
+        detections = self.detect_objects(best_frame)
         
         # Annotate frame with detections
-        annotated_frame = self.annotate_frame(frame, detections, position_name)
+        annotated_frame = self.annotate_frame(best_frame, detections, position_name)
         
         # Save annotated frame
         filename = f"{self.output_dir}/{position_name}_snapshot.jpg"
@@ -384,6 +425,7 @@ class ThreePositionAutoGrabSystem:
         for det in detections:
             det['position'] = position_name
             det['snapshot_file'] = filename
+            det['base_angle'] = self.arm.current_angles[1]  # Store the base angle
         
         return detections
     
@@ -448,9 +490,15 @@ class ThreePositionAutoGrabSystem:
             # Draw center point
             center_x, center_y = int(det['center_x']), int(det['center_y'])
             cv2.circle(annotated, (center_x, center_y), 5, (0, 0, 255), -1)
+            
+            # Draw coordinates text
+            coord_text = f"({det['center_x']:.0f}, {det['center_y']:.0f})"
+            cv2.putText(annotated, coord_text, (center_x - 30, center_y + 20),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
         
         # Add position label
-        cv2.putText(annotated, f"Position: {position_name.upper()}", 
+        position_text = f"Position: {position_name.upper()} (Base: {self.arm.current_angles[1]}°)"
+        cv2.putText(annotated, position_text, 
                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
         
         # Add detection count
@@ -470,6 +518,7 @@ class ThreePositionAutoGrabSystem:
         
         with open(info_filename, 'w') as f:
             f.write(f"Position: {position_name}\n")
+            f.write(f"Arm Base Angle: {self.arm.current_angles[1]}°\n")
             f.write(f"Image: {os.path.basename(image_filename)}\n")
             f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Total detections: {len(detections)}\n")
@@ -497,7 +546,10 @@ class ThreePositionAutoGrabSystem:
         positions = ['front', 'right', 'left']
         
         for position in positions:
-            # Move to position and capture snapshot
+            # Move to position (this includes stabilization time)
+            self.arm.go_to_position(position)
+            
+            # Capture snapshot at this position
             detections = self.capture_and_save_snapshot(position)
             
             if detections:
@@ -506,7 +558,10 @@ class ThreePositionAutoGrabSystem:
             else:
                 print(f"   ⚠️ No objects found in {position} position")
             
-            time.sleep(1.5)  # Brief pause between positions (allow settling)
+            # Brief pause between positions
+            if position != positions[-1]:  # Not after last position
+                print(f"   Preparing for next position...")
+                time.sleep(1)
         
         # Return to front position
         self.arm.go_to_position('front')
@@ -528,7 +583,7 @@ class ThreePositionAutoGrabSystem:
             f.write(f"Scan time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Total objects detected: {len(self.all_detections)}\n\n")
             
-            # Count by class
+            # Count by class and position
             class_counts = {}
             position_counts = {'front': 0, 'right': 0, 'left': 0}
             
@@ -545,14 +600,14 @@ class ThreePositionAutoGrabSystem:
             
             f.write("\nObjects by position:\n")
             for position, count in position_counts.items():
-                f.write(f"  {position}: {count}\n")
+                f.write(f"  {position}: {count} (Base angle: {self.arm.POSITION_ANGLES[position][1]}°)\n")
             
             f.write("\n" + "="*50 + "\n")
             f.write("DETAILED LIST:\n\n")
             
             for i, det in enumerate(self.all_detections, 1):
                 f.write(f"{i}. {det['class_name']} (Confidence: {det['confidence']:.3f})\n")
-                f.write(f"   Position: {det['position']}\n")
+                f.write(f"   Position: {det['position']} (Base: {det.get('base_angle', 'N/A')}°)\n")
                 f.write(f"   Center: ({det['center_x']:.1f}, {det['center_y']:.1f})\n")
                 f.write(f"   Snapshot: {os.path.basename(det['snapshot_file'])}\n")
                 f.write("-"*40 + "\n")
@@ -560,7 +615,7 @@ class ThreePositionAutoGrabSystem:
     def execute_grab_for_detection(self, detection):
         """
         Execute grab sequence for one detected object
-        Modified to handle objects from different positions
+        Gripper stays closed until drop zone is reached
         """
         if self.is_grabbing:
             return False
@@ -575,7 +630,6 @@ class ThreePositionAutoGrabSystem:
             # First, move to the position where object was detected
             print(f"   [0] Moving to {detection['position']} position...")
             self.arm.go_to_position(detection['position'])
-            time.sleep(1.5)
             
             # Calculate servo angles for this object
             target_angles = self.coord_system.calculate_servo_angles(
@@ -584,66 +638,55 @@ class ThreePositionAutoGrabSystem:
                 detection['position']
             )
             
-            print(f"📐 Target angles: {target_angles}")
-            
             # ----- GRAB SEQUENCE -----
             
             # 1. Ensure gripper is open
+            print("   [1] Opening gripper...")
             self.arm.open_gripper()
             time.sleep(0.5)
             
-            # 2. Move to approach position (slightly above object)
+            # 2. Move to approach position
             approach_angles = target_angles.copy()
             approach_angles[2] += 10  # Lift elbow a bit
-            approach_angles[3] -= 5   # Adjust wrist
             
-            print("   [1] Moving to approach position...")
+            print("   [2] Moving to approach position...")
             self.arm.set_multiple_angles(approach_angles, 1500)
             time.sleep(0.5)
             
             # 3. Move down to object
-            print("   [2] Descending to object...")
+            print("   [3] Descending to object...")
             self.arm.set_multiple_angles(target_angles, 1000)
             time.sleep(0.3)
             
-            # 4. Close gripper
-            print("   [3] Closing gripper...")
+            # 4. Close gripper (GRIPPER CLOSES HERE AND STAYS CLOSED)
+            print("   [4] Closing gripper...")
             self.arm.close_gripper()
             time.sleep(0.5)
             
-            # 5. Lift object
-            print("   [4] Lifting object...")
+            # 5. Lift object (GRIPPER STAYS CLOSED)
+            print("   [5] Lifting object (gripper stays closed)...")
             lift_angles = target_angles.copy()
             lift_angles[2] += 15  # Lift elbow
-            lift_angles[3] -= 5   # Adjust wrist
             self.arm.set_multiple_angles(lift_angles, 1000)
             time.sleep(0.5)
             
-            # 6. Move to drop position (simple right turn)
-            print("   [5] Moving to drop position...")
-            drop_angles = {
-                1: 135,   # Base turned right
-                2: 100,   # Shoulder
-                3: 20,    # Elbow
-                4: 15,    # Wrist
-                5: 90,    # Wrist rotation
-                6: self.arm.GRIPPER_CLOSED  # Keep closed
-            }
-            self.arm.set_multiple_angles(drop_angles, 1500)
+            # 6. Move to drop zone (GRIPPER STAYS CLOSED DURING MOVEMENT)
+            print("   [6] Moving to drop zone (gripper stays closed)...")
+            self.arm.go_to_drop_zone(keep_gripper_closed=True)
             time.sleep(0.5)
             
-            # 7. Open gripper to drop
-            print("   [6] Dropping object...")
+            # 7. Open gripper to drop (ONLY OPENS WHEN AT DROP ZONE)
+            print("   [7] Opening gripper to drop object...")
             self.arm.open_gripper()
             time.sleep(0.5)
             
             # 8. Return to front position
-            print("   [7] Returning to front position...")
-            self.arm.go_to_position('left')
+            print("   [8] Returning to front position...")
+            self.arm.go_to_position('front')
             time.sleep(1.0)
             
             self.grabbed_count += 1
-            print(f"\n✅ Successfully grabbed {detection['class_name']} from {detection['position']}")
+            print(f"\n✅ Successfully grabbed and dropped {detection['class_name']}")
             print(f"📊 Total grabbed: {self.grabbed_count}")
             
             # Mark this detection as grabbed
@@ -678,8 +721,7 @@ class ThreePositionAutoGrabSystem:
         print(f"{'='*70}")
         
         # Sort objects by position for efficiency
-        # Start with front, then left, then right (but you can customize this)
-        position_order = ['left', 'front', 'right']
+        position_order = ['front', 'left', 'right']
         sorted_detections = sorted(
             self.all_detections,
             key=lambda x: position_order.index(x['position']) if x['position'] in position_order else 3
@@ -699,7 +741,7 @@ class ThreePositionAutoGrabSystem:
             else:
                 print(f"   ❌ Grab failed")
             
-            # Cooldown between grabs (except after last one)
+            # Cooldown between grabs
             if i < len(sorted_detections):
                 print(f"   ⏳ Waiting {grab_cooldown} seconds before next grab...")
                 time.sleep(grab_cooldown)
@@ -723,10 +765,6 @@ class ThreePositionAutoGrabSystem:
             f.write(f"Total objects attempted: {len(self.all_detections)}\n")
             f.write(f"Successfully grabbed: {self.grabbed_count}\n")
             f.write(f"Success rate: {self.grabbed_count/len(self.all_detections)*100:.1f}%\n\n")
-            
-            grabbed_count = sum(1 for d in self.all_detections if d.get('grabbed', False))
-            f.write(f"Grabbed: {grabbed_count}\n")
-            f.write(f"Failed: {len(self.all_detections) - grabbed_count}\n\n")
             
             f.write("DETAILED RESULTS:\n")
             f.write("-"*50 + "\n")
@@ -759,9 +797,14 @@ class ThreePositionAutoGrabSystem:
                 print("\n⚠️ No objects detected. Stopping.")
                 return
             
+            # Show what was detected
+            print("\n📋 DETECTED OBJECTS:")
+            for i, det in enumerate(self.all_detections, 1):
+                print(f"   {i}. {det['class_name']} at {det['position']} position")
+            
             # Brief pause before grabbing
-            print("\n⏳ Preparing to grab objects...")
-            time.sleep(2)
+            print("\n⏳ Preparing to grab objects (3 seconds)...")
+            time.sleep(3)
             
             # STEP 2: Grab all detected objects
             print("\n🤖 STEP 2: Grabbing all detected objects...")
