@@ -27,7 +27,7 @@ try:
     arm.Arm_serial_servo_write(1, 90, 1000)
     arm.Arm_serial_servo_write(2, 115, 1000)
     arm.Arm_serial_servo_write(3, 5, 1000)
-    arm.Arm_serial_servo_write(4, 15, 1000)
+    arm.Arm_serial_servo_write(4, 5, 1000)
     arm.Arm_serial_servo_write(5, 90, 1000)
 
 

@@ -350,8 +350,9 @@ class ThreePositionAutoGrabSystem:
         print(f"\n📸 Capturing {position_name} snapshot...")
         
         # Ensure we're at the right position
+        # Wait slightly longer than the servo move time (2s) so the arm finishes moving
         self.arm.go_to_position(position_name)
-        time.sleep(1.5)  # Wait for arm to stabilize
+        time.sleep(2.2)  # Wait for arm to stabilize
         
         # Capture frame
         if self.cap is not None:
@@ -505,7 +506,7 @@ class ThreePositionAutoGrabSystem:
             else:
                 print(f"   ⚠️ No objects found in {position} position")
             
-            time.sleep(1)  # Brief pause between positions
+            time.sleep(1.5)  # Brief pause between positions (allow settling)
         
         # Return to front position
         self.arm.go_to_position('front')
@@ -638,7 +639,7 @@ class ThreePositionAutoGrabSystem:
             
             # 8. Return to front position
             print("   [7] Returning to front position...")
-            self.arm.go_to_position('front')
+            self.arm.go_to_position('left')
             time.sleep(1.0)
             
             self.grabbed_count += 1
@@ -678,7 +679,7 @@ class ThreePositionAutoGrabSystem:
         
         # Sort objects by position for efficiency
         # Start with front, then left, then right (but you can customize this)
-        position_order = ['front', 'left', 'right']
+        position_order = ['left', 'front', 'right']
         sorted_detections = sorted(
             self.all_detections,
             key=lambda x: position_order.index(x['position']) if x['position'] in position_order else 3
