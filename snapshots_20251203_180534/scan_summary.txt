@@ -1,0 +1,37 @@
+3-POSITION SCAN SUMMARY
+==================================================
+Scan time: 2025-12-03 18:06:25
+Total objects detected: 4
+
+Objects by class:
+  Hammer: 2
+  Plier: 2
+
+Objects by position:
+  front: 2 (Base angle: 90°)
+  right: 2 (Base angle: 135°)
+  left: 0 (Base angle: 45°)
+
+==================================================
+DETAILED LIST:
+
+1. Hammer (Confidence: 0.886)
+   Position: front (Base: 90°)
+   Center: (337.5, 320.0)
+   Snapshot: front_snapshot.jpg
+----------------------------------------
+2. Plier (Confidence: 0.453)
+   Position: front (Base: 90°)
+   Center: (254.0, 449.0)
+   Snapshot: front_snapshot.jpg
+----------------------------------------
+3. Hammer (Confidence: 0.872)
+   Position: right (Base: 135°)
+   Center: (337.0, 313.5)
+   Snapshot: right_snapshot.jpg
+----------------------------------------
+4. Plier (Confidence: 0.462)
+   Position: right (Base: 135°)
+   Center: (253.0, 449.5)
+   Snapshot: right_snapshot.jpg
+----------------------------------------

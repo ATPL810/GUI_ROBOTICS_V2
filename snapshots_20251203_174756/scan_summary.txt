@@ -1,0 +1,48 @@
+3-POSITION SCAN SUMMARY
+==================================================
+Scan time: 2025-12-03 17:48:41
+Total objects detected: 6
+
+Objects by class:
+  Plier: 2
+  Hammer: 2
+  Measuring Tape: 2
+
+Objects by position:
+  front: 2 (Base angle: 90°)
+  right: 2 (Base angle: 135°)
+  left: 2 (Base angle: 45°)
+
+==================================================
+DETAILED LIST:
+
+1. Plier (Confidence: 0.838)
+   Position: front (Base: 90°)
+   Center: (302.0, 433.0)
+   Snapshot: front_snapshot.jpg
+----------------------------------------
+2. Hammer (Confidence: 0.823)
+   Position: front (Base: 90°)
+   Center: (386.5, 307.0)
+   Snapshot: front_snapshot.jpg
+----------------------------------------
+3. Plier (Confidence: 0.829)
+   Position: right (Base: 135°)
+   Center: (301.0, 433.0)
+   Snapshot: right_snapshot.jpg
+----------------------------------------
+4. Hammer (Confidence: 0.827)
+   Position: right (Base: 135°)
+   Center: (387.5, 300.0)
+   Snapshot: right_snapshot.jpg
+----------------------------------------
+5. Measuring Tape (Confidence: 0.790)
+   Position: left (Base: 45°)
+   Center: (399.0, 174.0)
+   Snapshot: left_snapshot.jpg
+----------------------------------------
+6. Measuring Tape (Confidence: 0.482)
+   Position: left (Base: 45°)
+   Center: (49.5, 120.5)
+   Snapshot: left_snapshot.jpg
+----------------------------------------

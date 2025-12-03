@@ -1,0 +1,21 @@
+Position: right
+Arm Base Angle: 135°
+Image: right_snapshot.jpg
+Timestamp: 2025-12-03 18:06:08
+Total detections: 2
+==================================================
+
+Detection #1:
+  Class: Hammer
+  Confidence: 0.872
+  Bounding Box: (np.int64(57), np.int64(199), np.int64(617), np.int64(428))
+  Center: (337.0, 313.5)
+  Size: 560x229 pixels
+------------------------------
+Detection #2:
+  Class: Plier
+  Confidence: 0.462
+  Bounding Box: (np.int64(53), np.int64(419), np.int64(453), np.int64(480))
+  Center: (253.0, 449.5)
+  Size: 400x61 pixels
+------------------------------

@@ -25,8 +25,8 @@ for i in range(4):
         
         # CRITICAL: These settings give MAXIMUM FPS on Pi
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG encoding
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)   # Don't go lower or YOLO won't detect well
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 960)   # Don't go lower or YOLO won't detect well
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
         cap.set(cv2.CAP_PROP_FPS, 30)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)      # MINIMAL buffer = minimal lag
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)       # Disable auto-focus
