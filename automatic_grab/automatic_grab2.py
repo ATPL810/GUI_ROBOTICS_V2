@@ -355,7 +355,7 @@ class ThreePositionAutoGrabSystem:
         """Load YOLO model"""
         print("📦 Loading YOLO model...")
         
-        model_paths = ['best.pt', 'yolo11n.pt', 'yolov8n.pt']
+        model_paths = ['./best_2s.pt']
         
         for path in model_paths:
             if os.path.exists(path):

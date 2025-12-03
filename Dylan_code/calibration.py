@@ -21,31 +21,32 @@ class CameraCalibrator:
         self.square_size = 30  # mm
         
     def capture_calibration_images(self, num_images=20):
-        """Capture multiple images of calibration pattern from different angles"""
-        from picamera2 import Picamera2
-        
-        camera = Picamera2()
-        config = camera.create_still_configuration(main={"size": (640, 480)})
-        camera.configure(config)
-        camera.start()
-        
+        """Capture multiple images of calibration pattern from different angles using OpenCV VideoCapture"""
+        cap = cv2.VideoCapture(1)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        if not cap.isOpened():
+            raise RuntimeError("Unable to open camera (VideoCapture index 1)")
+
         print(f"Capturing {num_images} calibration images...")
         print("Move the calibration pattern to different positions/orientations")
-        
+
         images = []
         for i in range(num_images):
             input(f"Position {i+1}/{num_images}. Press Enter to capture...")
-            
-            # Capture image
+
+            # Capture image from VideoCapture
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                print(f"  Failed to capture image {i+1}")
+                continue
+
             temp_file = f"/tmp/calib_{i}.jpg"
-            camera.capture_file(temp_file)
-            img = cv2.imread(temp_file)
-            
-            if img is not None:
-                images.append(img)
-                print(f"  Image {i+1} captured")
-        
-        camera.stop()
+            cv2.imwrite(temp_file, frame)
+            images.append(frame)
+            print(f"  Image {i+1} captured")
+
+        cap.release()
         return images
     
     def find_checkerboard_corners(self, images):
@@ -115,13 +116,12 @@ class CameraCalibrator:
     
     def calibrate_workspace(self):
         """Calibrate workspace mapping (pixel to world coordinates)"""
-        from picamera2 import Picamera2
-        
-        camera = Picamera2()
-        config = camera.create_still_configuration(main={"size": (640, 480)})
-        camera.configure(config)
-        camera.start()
-        
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        if not cap.isOpened():
+            raise RuntimeError("Unable to open camera (VideoCapture index 0)")
+
         print("\n=== WORKSPACE CALIBRATION ===")
         print("We'll now map pixel coordinates to world coordinates.")
         print("Please place a marker at known positions.")
@@ -140,11 +140,11 @@ class CameraCalibrator:
         for pos in positions:
             print(f"\nPlace marker at {pos['name']} (X={pos['x']}mm, Y={pos['y']}mm)")
             input("Press Enter when ready...")
-            
-            # Capture image
-            temp_file = "/tmp/calib_point.jpg"
-            camera.capture_file(temp_file)
-            img = cv2.imread(temp_file)
+            # Capture image from VideoCapture
+            ret, img = cap.read()
+            if not ret or img is None:
+                print("  Failed to capture image for this point")
+                continue
             
             # Let user click on marker
             point = None
@@ -167,7 +167,7 @@ class CameraCalibrator:
                     'world': (pos['x'], pos['y'])
                 })
         
-        camera.stop()
+        cap.release()
         
         # Calculate homography matrix
         if len(calibration_points) >= 4:
