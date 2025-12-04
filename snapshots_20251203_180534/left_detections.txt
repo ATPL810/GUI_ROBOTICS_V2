@@ -1,7 +1,0 @@
-Position: left
-Arm Base Angle: 45°
-Image: left_snapshot.jpg
-Timestamp: 2025-12-03 18:06:22
-Total detections: 0
-==================================================
-

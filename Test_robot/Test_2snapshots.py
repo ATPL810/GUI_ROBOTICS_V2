@@ -38,7 +38,7 @@ class RobotArmController:
             # EXACT INITIAL POSITION AS SPECIFIED (DO NOT ALTER)
             self.INITIAL_POSITION = {
                 self.SERVO_BASE: 90,      # 90 degrees
-                self.SERVO_SHOULDER: 115, # 115 degrees
+                self.SERVO_SHOULDER: 105, # 115 degrees
                 self.SERVO_ELBOW: 45,     # 45 degrees
                 self.SERVO_WRIST: -35,    # -35 degrees (converted to servo range)
                 self.SERVO_WRIST_ROT: 90, # 90 degrees
@@ -47,8 +47,18 @@ class RobotArmController:
             
             # Second position: base moves 30 degrees to robot's right
             self.SECOND_POSITION = {
-                self.SERVO_BASE: 120,     # 90 + 30 = 120 degrees
-                self.SERVO_SHOULDER: 115, # Same
+                self.SERVO_BASE: 40,     # 90 + 30 = 120 degrees
+                self.SERVO_SHOULDER: 105, # Same
+                self.SERVO_ELBOW: 45,     # Same
+                self.SERVO_WRIST: -35,    # Same
+                self.SERVO_WRIST_ROT: 90, # Same
+                self.SERVO_GRIPPER: 90    # Same
+            }
+
+            # third position: base moves 1 degrees to robot's right
+            self.THIRD_POSITION = {
+                self.SERVO_BASE: 1,     
+                self.SERVO_SHOULDER: 105, # Same
                 self.SERVO_ELBOW: 45,     # Same
                 self.SERVO_WRIST: -35,    # Same
                 self.SERVO_WRIST_ROT: 90, # Same
@@ -76,7 +86,7 @@ class RobotArmController:
         """Move to exact initial position"""
         angles_dict = self.INITIAL_POSITION.copy()
         # Convert negative wrist angle
-        angles_dict[self.SERVO_WRIST] = self.convert_angle(angles_dict[self.SERVO_WRIST])
+        angles_dict[self.SERVO_WRIST] = (angles_dict[self.SERVO_WRIST])
         
         # Move all servos at once
         self.arm.Arm_serial_servo_write6(
@@ -88,10 +98,10 @@ class RobotArmController:
         print("   ✅ At initial position")
     
     def go_to_second_position(self):
-        """Move to second position (base +30 degrees)"""
+        """Move to second position (base at 40 degrees)"""
         angles_dict = self.SECOND_POSITION.copy()
         # Convert negative wrist angle
-        angles_dict[self.SERVO_WRIST] = self.convert_angle(angles_dict[self.SERVO_WRIST])
+        angles_dict[self.SERVO_WRIST] = (angles_dict[self.SERVO_WRIST])
         
         # Move all servos at once
         self.arm.Arm_serial_servo_write6(
@@ -100,7 +110,7 @@ class RobotArmController:
             2000  # Move time in ms
         )
         time.sleep(2.5)  # Wait for movement to complete
-        print("   ✅ At second position (base +30°)")
+        print("   ✅ At second position (base at 40°)")
     
     def get_current_position_name(self, servo1_angle):
         """Get position name based on base servo angle"""
@@ -347,6 +357,15 @@ class AutomaticSnapshotSystem:
         """Capture a snapshot, detect objects, and save results"""
         print(f"\n📸 CAPTURING SNAPSHOT: {position_name}")
         print(f"   Base servo angle: {base_angle}°")
+        
+        # Clear camera buffer by reading and discarding a few frames
+        print("   Clearing camera buffer...")
+        for _ in range(3):
+            self.detector.cap.read()
+            time.sleep(0.1)
+        
+        # Small delay to ensure arm has completely stopped moving
+        time.sleep(0.5)
         
         # Capture frame
         ret, frame = self.detector.cap.read()

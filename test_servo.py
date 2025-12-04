@@ -23,12 +23,68 @@ try:
     #     time.sleep(1)
     
     print("✅ Arm test complete!")
-
-    arm.Arm_serial_servo_write(1, 90, 1000)
-    arm.Arm_serial_servo_write(2, 115, 1000)
+#  INiitial positions
+    arm.Arm_serial_servo_write(1,40, 1000)
+    arm.Arm_serial_servo_write(2, 105, 1000)
     arm.Arm_serial_servo_write(3, 45, 1000)
     arm.Arm_serial_servo_write(4, -35, 1000)
     arm.Arm_serial_servo_write(5, 90, 1000)
+
+#     # move to pos Before grabbing
+#     time.sleep(2)   
+#     arm.Arm_serial_servo_write6(52,35,49,45,89,125, 1000)
+    
+#     #  grabbing
+
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write(6, 135, 1000)
+
+#     # arm.Arm_serial_servo_write(6, 145, 1000)
+
+#     # move to pos After grabbing
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write6(60,45,50,90,90,135, 1000)
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write6(100,90,55,60,90,135, 1000)
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write6(130,40,55,45,90,135, 1000)
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write6(130,30,55,45,90,125, 1000)
+
+#     time.sleep(2)
+#     arm.Arm_serial_servo_write6(90,90,90,90,90,90, 1000)
+
+
+# position for angle 0
+
+    # # move to pos Before grabbing
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(0,67,17,41,117,57, 1000)
+    # time.sleep(2)   
+    # arm.Arm_serial_servo_write6(0,60,18,47,117,138, 1000)
+    
+    # #  grabbing
+
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write(6, 169, 1000)
+
+    # # arm.Arm_serial_servo_write(6, 145, 1000)
+
+    # # move to pos After grabbing
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(0,45,50,90,90,169, 1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(60,90,55,60,90,169, 1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(130,40,55,45,90,169,1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(130,30,55,45,90,125, 1000)
+
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(90,90,90,90,90,90, 1000)
+
+
+
 
 
 

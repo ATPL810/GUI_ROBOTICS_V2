@@ -124,10 +124,10 @@ class ArmController:
             
             if success:
                 self.current_position = position_name
-                print(f"✅ Now at {position_name} position")
-                # Add extra stabilization time for camera
-                print(f"   Waiting for camera stabilization...")
-                time.sleep(1.5)  # Extra time for camera to stabilize
+                print(f"✅ Now at {position_name} position (Base: {position_angles[1]}°)")
+                # Longer stabilization: servo movement (2s) + mechanical settle + camera buffer refresh
+                print(f"   Waiting for stabilization and camera buffer refresh (2.8 seconds)...")
+                time.sleep(2.8)
             return success
         return False
     
@@ -380,7 +380,19 @@ class ThreePositionAutoGrabSystem:
         print(f"   Current arm position: {position_name}")
         print(f"   Base servo angle: {self.arm.current_angles[1]}°")
         
-        # Capture multiple frames to ensure we get a clear one
+        # CRITICAL: Flush camera buffer to discard old frames captured BEFORE arm movement
+        # USB cameras buffer 2-4 frames; reading extra frames clears old data
+        if self.cap is not None:
+            print(f"   🔄 Flushing camera buffer (clearing {6} old frames)...")
+            for flush_idx in range(6):
+                ret, _ = self.cap.read()
+                if not ret:
+                    print(f"      Flushed {flush_idx} frames, buffer clear")
+                    break
+            time.sleep(0.4)  # Allow camera to stabilize after buffer flush
+            print(f"   ✅ Buffer flushed, capturing fresh frames...")
+        
+        # Now capture frames that reflect the current (NEW) arm position
         frames_to_capture = 3
         best_frame = None
         
@@ -388,9 +400,9 @@ class ThreePositionAutoGrabSystem:
             if self.cap is not None:
                 ret, frame = self.cap.read()
                 if ret:
-                    if i == frames_to_capture - 1:  # Use the last frame
+                    if i == frames_to_capture - 1:  # Use the last frame (freshest)
                         best_frame = frame.copy()
-                        print(f"   Captured frame {i+1}/{frames_to_capture}")
+                        print(f"   📷 Captured fresh frame {i+1}/{frames_to_capture} at Base={self.arm.current_angles[1]}°")
                     time.sleep(0.1)  # Small delay between frames
             else:
                 # Create test frame if no camera
@@ -546,10 +558,14 @@ class ThreePositionAutoGrabSystem:
         positions = ['front', 'right', 'left']
         
         for position in positions:
-            # Move to position (this includes stabilization time)
+            # Move to position (includes initial stabilization wait of 2.8s)
             self.arm.go_to_position(position)
             
-            # Capture snapshot at this position
+            # Additional final wait for mechanical vibrations to fully settle
+            print(f"   ⏱️  Final settling period (1.5 seconds)...")
+            time.sleep(1.5)
+            
+            # NOW capture snapshot - arm fully settled, camera buffer flushed internally
             detections = self.capture_and_save_snapshot(position)
             
             if detections:
