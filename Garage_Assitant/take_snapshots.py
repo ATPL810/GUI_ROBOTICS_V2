@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 from Arm_Lib import Arm_Device  # Make sure Arm_Lib is installed
 
-print("🤖 AUTOMATIC ROBOTIC ARM SNAPSHOT SYSTEM")
+print(" AUTOMATIC ROBOTIC ARM SNAPSHOT SYSTEM")
 print("=" * 70)
 
 # ============================================
@@ -20,7 +20,7 @@ print("=" * 70)
 class RobotArmController:
     def __init__(self):
         """Initialize arm with exact specified angles"""
-        print("🤖 Initializing robot arm...")
+        print(" Initializing robot arm...")
         
         try:
             # Initialize Arm_Device
@@ -66,14 +66,14 @@ class RobotArmController:
             }
             
             # Move to initial position
-            print("📸 Moving to initial position...")
+            print(" Moving to initial position...")
             self.go_to_initial_position()
             
-            print("✅ Robot arm initialized successfully")
+            print(" Robot arm initialized successfully")
             print(f"   Initial position: {self.INITIAL_POSITION}")
             
         except Exception as e:
-            print(f"❌ Failed to initialize robot arm: {e}")
+            print(f" Failed to initialize robot arm: {e}")
             raise
     
     def convert_angle(self, angle):
@@ -95,7 +95,7 @@ class RobotArmController:
             2000  # Move time in ms
         )
         time.sleep(2.5)  # Wait for movement to complete
-        print("   ✅ At initial position")
+        print("    At initial position")
     
     def go_to_second_position(self):
         """Move to second position (base at 40 degrees)"""
@@ -110,7 +110,7 @@ class RobotArmController:
             2000  # Move time in ms
         )
         time.sleep(2.5)  # Wait for movement to complete
-        print("   ✅ At second position (base at 40°)")
+        print("    At second position (base at 40°)")
     
     def go_to_third_position(self):
         """Move to third position (base at 1 degree)"""
@@ -125,7 +125,7 @@ class RobotArmController:
             2000  # Move time in ms
         )
         time.sleep(2.5)  # Wait for movement to complete
-        print("   ✅ At third position (base at 1°)")
+        print("    At third position (base at 1°)")
     
     def get_current_position_name(self, servo1_angle):
         """Get position name based on base servo angle"""
@@ -162,7 +162,7 @@ class CameraDetectionSystem:
             (0, 255, 255)   # Yellow - Wrench
         ]
         
-        print("✅ Camera and detection system ready")
+        print("Camera and detection system ready")
     
     def setup_camera(self):
         """Setup camera for maximum FPS"""
@@ -171,7 +171,7 @@ class CameraDetectionSystem:
         for i in range(4):
             cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
             if cap.isOpened():
-                print(f"   ✅ Found camera at index {i}")
+                print(f"    Found camera at index {i}")
                 
                 # Optimize camera settings
                 cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
@@ -202,10 +202,10 @@ class CameraDetectionSystem:
                     model.overrides['agnostic_nms'] = True
                     model.overrides['max_det'] = 6
                     model.overrides['verbose'] = False
-                    print(f"   ✅ Model loaded: {path}")
+                    print(f"    Model loaded: {path}")
                     return model
                 except Exception as e:
-                    print(f"   ⚠️ Failed to load {path}: {e}")
+                    print(f"    Failed to load {path}: {e}")
                     continue
         
         raise Exception("No YOLO model found!")
@@ -275,7 +275,7 @@ class CameraDetectionSystem:
             return detections
             
         except Exception as e:
-            print(f"⚠️ Detection error: {e}")
+            print(f" Detection error: {e}")
             return []
     
     def annotate_frame(self, frame, detections, position_name, base_angle):
@@ -339,11 +339,11 @@ class CameraDetectionSystem:
 class AutomaticSnapshotSystem:
     def __init__(self):
         """Initialize the complete system"""
-        print("🚀 Initializing Automatic Snapshot System...")
+        print(" Initializing Automatic Snapshot System...")
         
         # Create output directory
         self.output_dir = self.create_output_directory()
-        print(f"📁 Output directory: {self.output_dir}")
+        print(f" Output directory: {self.output_dir}")
         
         # Initialize components
         self.arm = RobotArmController()
@@ -352,7 +352,7 @@ class AutomaticSnapshotSystem:
         # Store all snapshots and detections
         self.all_snapshots = []
         
-        print("✅ System initialized and ready to run automatically")
+        print(" System initialized and ready to run automatically")
         print("=" * 70)
     
     def create_output_directory(self):
@@ -364,15 +364,15 @@ class AutomaticSnapshotSystem:
     
     def wait_for_stabilization(self, seconds=3, position_name=""):
         """Wait for robot to stabilize before taking snapshot"""
-        print(f"\n⏳ Waiting {seconds} seconds for {position_name} stabilization...")
+        print(f"\n Waiting {seconds} seconds for {position_name} stabilization...")
         for i in range(seconds, 0, -1):
             print(f"   {i}...")
             time.sleep(1)
-        print("   ✅ Robot stabilized")
+        print("    Robot stabilized")
     
     def capture_snapshot(self, position_name, base_angle):
         """Capture a snapshot, detect objects, and save results"""
-        print(f"\n📸 CAPTURING SNAPSHOT: {position_name}")
+        print(f"\n CAPTURING SNAPSHOT: {position_name}")
         print(f"   Base servo angle: {base_angle}°")
         
         # Clear camera buffer by reading and discarding a few frames
@@ -387,7 +387,7 @@ class AutomaticSnapshotSystem:
         # Capture frame
         ret, frame = self.detector.cap.read()
         if not ret:
-            print(f"❌ Failed to capture frame at {position_name}")
+            print(f" Failed to capture frame at {position_name}")
             return None
         
         # Mirror the frame (like a mirror view)
@@ -398,11 +398,11 @@ class AutomaticSnapshotSystem:
         detections = self.detector.detect_objects(frame)
         
         if detections:
-            print(f"   ✅ Found {len(detections)} objects:")
+            print(f"    Found {len(detections)} objects:")
             for det in detections:
                 print(f"      • {det['class_name']}: {det['confidence_percentage']}")
         else:
-            print("   ⚠️ No objects detected")
+            print("    No objects detected")
         
         # Annotate frame
         annotated_frame = self.detector.annotate_frame(frame, detections, position_name, base_angle)
@@ -410,7 +410,7 @@ class AutomaticSnapshotSystem:
         # Save snapshot
         filename = f"{self.output_dir}/{position_name}.jpg"
         cv2.imwrite(filename, annotated_frame)
-        print(f"   💾 Saved snapshot: {filename}")
+        print(f"    Saved snapshot: {filename}")
         
         # Save detection data to text file
         self.save_detection_data(position_name, detections, filename, base_angle)
@@ -456,7 +456,7 @@ class AutomaticSnapshotSystem:
             else:
                 f.write("No objects detected in this snapshot.\n")
         
-        print(f"   📝 Saved detection report: {txt_filename}")
+        print(f"    Saved detection report: {txt_filename}")
     
     def save_summary_report(self):
         """Save summary report of all snapshots"""
@@ -507,12 +507,12 @@ class AutomaticSnapshotSystem:
             else:
                 f.write("No tools detected in any snapshot.\n")
         
-        print(f"\n📋 Saved summary report: {summary_filename}")
+        print(f"\n Saved summary report: {summary_filename}")
     
     def run_automatic_sequence(self):
         """Run the complete automatic sequence"""
         print("\n" + "=" * 70)
-        print("🚀 STARTING AUTOMATIC SNAPSHOT SEQUENCE")
+        print(" STARTING AUTOMATIC SNAPSHOT SEQUENCE")
         print("=" * 70)
         
         try:
@@ -603,13 +603,13 @@ class AutomaticSnapshotSystem:
             print("=" * 70)
             
             total_detections = sum(len(snap['detections']) for snap in self.all_snapshots)
-            print(f"\n📊 FINAL STATISTICS:")
+            print(f"\n FINAL STATISTICS:")
             print(f"   Snapshots taken: {len(self.all_snapshots)}")
             print(f"   Total objects detected: {total_detections}")
             print(f"   All files saved in: {self.output_dir}")
             
             # Show what was detected
-            print(f"\n📋 DETECTED OBJECTS SUMMARY:")
+            print(f"\n DETECTED OBJECTS SUMMARY:")
             for snap in self.all_snapshots:
                 print(f"\n   {snap['position_name'].upper()} (Base: {snap['base_angle']}°):")
                 if snap['detections']:
@@ -618,26 +618,26 @@ class AutomaticSnapshotSystem:
                 else:
                     print(f"     No objects detected")
             
-            print(f"\n🎉 Program completed successfully!")
+            print(f"\n Program completed successfully!")
             
         except Exception as e:
-            print(f"\n❌ ERROR during automatic sequence: {e}")
+            print(f"\n ERROR during automatic sequence: {e}")
             raise
         
         finally:
             # Always ensure robot returns to initial position
             try:
-                print("\n🔄 Ensuring robot returns to initial position...")
+                print("\n Ensuring robot returns to initial position...")
                 self.arm.go_to_initial_position()
-                print("✅ Robot safely returned to initial position")
+                print(" Robot safely returned to initial position")
             except:
-                print("⚠️ Could not return robot to initial position")
+                print(" Could not return robot to initial position")
 
 # ============================================
 # MAIN EXECUTION
 # ============================================
 if __name__ == "__main__":
-    print("🤖 ROBOTIC ARM AUTOMATIC SNAPSHOT SYSTEM")
+    print(" ROBOTIC ARM AUTOMATIC SNAPSHOT SYSTEM")
     print("=" * 70)
     print("This program will run automatically:")
     print("1. Start at initial position (servo1:90°, servo2:115°, servo3:45°, servo4:-35°, servo5:90°, servo6:90°)")
@@ -655,7 +655,7 @@ if __name__ == "__main__":
     print("=" * 70)
     
     # Countdown to start
-    print("\n⏱️ Starting in 5 seconds...")
+    print("\nStarting in 5 seconds...")
     for i in range(5, 0, -1):
         print(f"   {i}...")
         time.sleep(1)
@@ -666,8 +666,8 @@ if __name__ == "__main__":
         system.run_automatic_sequence()
         
     except KeyboardInterrupt:
-        print("\n\n🛑 Program interrupted by user")
+        print("\n\nProgram interrupted by user")
     except Exception as e:
-        print(f"\n❌ Program error: {e}")
+        print(f"\n Program error: {e}")
     finally:
-        print("\n✅ Program ended")
+        print("\n Program ended")
