@@ -6,4 +6,3 @@ Pillow
 numpy
 Arm_Lib
 pyserial 
-yahboom
