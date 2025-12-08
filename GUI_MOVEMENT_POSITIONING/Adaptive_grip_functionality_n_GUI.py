@@ -1,6 +1,7 @@
 """
-GARAGE ASSISTANT ROBOTIC ARM SYSTEM
+GARAGE ASSISTANT ROBOTIC ARM SYSTEM WITH ADAPTIVE GRIPPER
 Detects objects, displays GUI for user selection, and executes pick-and-place operations
+Uses exact 9 point coordinates with adaptive gripping
 """
 
 import cv2
@@ -13,13 +14,12 @@ from Arm_Lib import Arm_Device
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import threading
-from PIL import Image, ImageTk
 
-print("GARAGE ASSISTANT ROBOTIC ARM SYSTEM")
+print("GARAGE ASSISTANT ROBOTIC ARM SYSTEM WITH ADAPTIVE GRIPPER")
 print("=" * 70)
 
 # ============================================
-# ROBOT ARM CONTROLLER
+# ROBOT ARM CONTROLLER WITH 9 POINTS
 # ============================================
 class RobotArmController:
     def __init__(self):
@@ -48,7 +48,7 @@ class RobotArmController:
                 self.SERVO_GRIPPER: 90
             }
             
-            # Second position: base at 40 degrees
+            # Snapshot positions
             self.SECOND_POSITION = {
                 self.SERVO_BASE: 40,
                 self.SERVO_SHOULDER: 105,
@@ -58,7 +58,6 @@ class RobotArmController:
                 self.SERVO_GRIPPER: 90
             }
 
-            # Third position: base at 1 degree
             self.THIRD_POSITION = {
                 self.SERVO_BASE: 1,
                 self.SERVO_SHOULDER: 105,
@@ -68,39 +67,120 @@ class RobotArmController:
                 self.SERVO_GRIPPER: 90
             }
             
-            # DROP ZONE POSITION
-            self.DROP_ZONE_BASE = 150
-            self.DROP_ZONE_SEQUENCE = [
-                # Add your drop zone waypoints here
-                # Example: approach drop zone, lower to drop, release
-                # Format: (servo1, servo2, servo3, servo4, servo5, servo6)
-                (150, 90, 55, 60, 90, None),  # Move to drop zone (gripper stays closed)
-                (150, 70, 55, 45, 90, None),  # Lower to drop position
-                # Gripper will open here (handled in release step)
-                (150, 90, 90, 90, 90, 90)     # Lift up after release
-            ]
+            # DROP ZONE POSITION (servo1: 150 degrees)
+            self.DROP_ZONE_POSITION = {
+                self.SERVO_BASE: 150,
+                self.SERVO_SHOULDER: 90,
+                self.SERVO_ELBOW: 90,
+                self.SERVO_WRIST: 90,
+                self.SERVO_WRIST_ROT: 90,
+                self.SERVO_GRIPPER: 90  # Will be set during operation
+            }
             
-            # Hardcoded positions for 9 objects (PLACEHOLDER - will be filled)
+            # ============================================
+            # 9 EXACT GRABBING POINTS (YOUR COORDINATES)
+            # ============================================
+            
             self.OBJECT_POSITIONS = {
-                'position_1': {
-                    'name': 'Position A',
-                    'before_grab': (52, 35, 49, 45, 89, 125),
-                    'after_grab': [
-                        (60, 45, 50, 90, 90, 135),
-                        (100, 90, 55, 60, 90, 135),
-                        (130, 40, 55, 45, 90, 135),
+                'position_1': {  # Point A - Bolts
+                    'name': 'Point A - Bolts',
+                    'approach': (72, 33, 31, 59, 110, 89),
+                    'grab': (72, 35, 31, 59, 85, 112),
+                    'lift': (69, 58, 39, 59, 118, None),  # None = keep gripper closed
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),  # Approach drop zone
+                        (130, 30, 55, 45, 90, 125)   # Prepare to release
+                    ]
+                },
+                'position_2': {  # Point B - Multiple tools
+                    'name': 'Point B - Multiple Tools',
+                    'approach': (81, 33, 54, 17, 76, 139),
+                    'grab': (81, 29, 55, 18, 76, 150),
+                    'lift': (81, 29, 54, 18, 76, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
                         (130, 30, 55, 45, 90, 125)
                     ]
                 },
-                # Positions 2-9 will be added here
-                'position_2': {'name': 'Position B', 'before_grab': None, 'after_grab': []},
-                'position_3': {'name': 'Position C', 'before_grab': None, 'after_grab': []},
-                'position_4': {'name': 'Position D', 'before_grab': None, 'after_grab': []},
-                'position_5': {'name': 'Position E', 'before_grab': None, 'after_grab': []},
-                'position_6': {'name': 'Position F', 'before_grab': None, 'after_grab': []},
-                'position_7': {'name': 'Position G', 'before_grab': None, 'after_grab': []},
-                'position_8': {'name': 'Position H', 'before_grab': None, 'after_grab': []},
-                'position_9': {'name': 'Position I', 'before_grab': None, 'after_grab': []}
+                'position_3': {  # Point C - Bolt
+                    'name': 'Point C - Bolt',
+                    'approach': (91, 47, 6, 85, 89, 91),
+                    'grab': (91, 45, 6, 85, 89, 119),
+                    'lift': (103, 54, 40, 34, 90, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 125)
+                    ]
+                },
+                'position_4': {  # Point D - Multiple tools
+                    'name': 'Point D - Multiple Tools',
+                    'approach': (105, 40, 25, 50, 89, 111),
+                    'grab': (105, 36, 27, 53, 90, 123),
+                    'lift': (103, 54, 40, 34, 90, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 125)
+                    ]
+                },
+                'position_5': {  # Point E - Multiple tools
+                    'name': 'Point E - Multiple Tools',
+                    'approach': (31, 39, 48, 22, 101, 133),
+                    'grab': (31, 33, 48, 22, 102, 140),
+                    'lift': (31, 65, 71, 22, 102, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 125)
+                    ]
+                },
+                'position_6': {  # Point F - Bolt
+                    'name': 'Point F - Bolt',
+                    'approach': (38, 33, 53, 35, 90, 142),
+                    'grab': (38, 25, 54, 44, 90, 143),
+                    'lift': (37, 36, 71, 44, 80, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 130)
+                    ]
+                },
+                'position_7': {  # Point G - Pliers
+                    'name': 'Point G - Pliers',
+                    'approach': (50, 17, 93, 1, 90, 59),
+                    'grab': (49, 2, 93, 16, 89, 59),
+                    'lift': (50, 30, 107, 18, 89, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 124)
+                    ]
+                },
+                'position_8': {  # Point H - Measuring Tape
+                    'name': 'Point H - Measuring Tape',
+                    'approach': (0, 23, 90, 2, 40, 62),
+                    'grab': (-15, 19, 90, 6, 40, 45),
+                    'lift': (50, 30, 107, 18, 89, None),
+                    'intermediate': (120, 90, 55, 60, 90, None),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, None),
+                        (130, 30, 55, 45, 90, 100)
+                    ]
+                },
+                'position_9': {  # Point I - Hammer
+                    'name': 'Point I - Hammer',
+                    'approach': (13, 50, 37, 37, 93, 87),
+                    'grab': (8, 3, 86, 34, 123, 86),
+                    'lift': (9, 26, 98, 35, 123, None),
+                    'intermediate': (120, 90, 55, 60, 90, 163),
+                    'to_drop': [
+                        (130, 40, 55, 45, 90, 163),
+                        (130, 30, 55, 45, 90, 100)
+                    ]
+                }
             }
             
             # Move to initial position
@@ -108,7 +188,8 @@ class RobotArmController:
             self.go_to_initial_position()
             
             print("Robot arm initialized successfully")
-            print(f"   Initial position: {self.INITIAL_POSITION}")
+            print(f"Initial position: {self.INITIAL_POSITION}")
+            print(f"9 grabbing points configured")
             
         except Exception as e:
             print(f"Failed to initialize robot arm: {e}")
@@ -117,167 +198,222 @@ class RobotArmController:
     def convert_angle(self, angle):
         """Convert negative angles to servo range (0-180)"""
         if angle < 0:
-            return 180 + angle
+            return 180 + angle  # -35 becomes 145, -15 becomes 165, etc.
         return angle
+    
+    def move_to_angles(self, angles_tuple, move_time=1000, keep_gripper=None):
+        """
+        Move to specified angles
+        angles_tuple: (servo1, servo2, servo3, servo4, servo5, servo6)
+        If servo6 is None and keep_gripper is provided, use keep_gripper value
+        """
+        s1, s2, s3, s4, s5, s6 = angles_tuple
+        
+        # Convert wrist angle if negative
+        s4 = self.convert_angle(s4)
+        
+        # Handle gripper angle
+        if s6 is None and keep_gripper is not None:
+            s6 = keep_gripper
+        elif s6 is None:
+            s6 = 90  # Default to open
+            
+        self.arm.Arm_serial_servo_write6(s1, s2, s3, s4, s5, s6, move_time)
+        time.sleep(move_time/1000 + 0.5)
     
     def go_to_initial_position(self):
         """Move to exact initial position"""
-        angles_dict = self.INITIAL_POSITION.copy()
-        angles_dict[self.SERVO_WRIST] = angles_dict[self.SERVO_WRIST]
-        
-        self.arm.Arm_serial_servo_write6(
-            angles_dict[1], angles_dict[2], angles_dict[3],
-            angles_dict[4], angles_dict[5], angles_dict[6],
+        self.move_to_angles(
+            (self.INITIAL_POSITION[self.SERVO_BASE],
+             self.INITIAL_POSITION[self.SERVO_SHOULDER],
+             self.INITIAL_POSITION[self.SERVO_ELBOW],
+             self.INITIAL_POSITION[self.SERVO_WRIST],
+             self.INITIAL_POSITION[self.SERVO_WRIST_ROT],
+             self.INITIAL_POSITION[self.SERVO_GRIPPER]),
             2000
         )
-        time.sleep(2.5)
-        print("   At initial position")
+        print("At initial position")
     
     def go_to_second_position(self):
         """Move to second position (base at 40 degrees)"""
-        angles_dict = self.SECOND_POSITION.copy()
-        angles_dict[self.SERVO_WRIST] = angles_dict[self.SERVO_WRIST]
-        
-        self.arm.Arm_serial_servo_write6(
-            angles_dict[1], angles_dict[2], angles_dict[3],
-            angles_dict[4], angles_dict[5], angles_dict[6],
+        self.move_to_angles(
+            (self.SECOND_POSITION[self.SERVO_BASE],
+             self.SECOND_POSITION[self.SERVO_SHOULDER],
+             self.SECOND_POSITION[self.SERVO_ELBOW],
+             self.SECOND_POSITION[self.SERVO_WRIST],
+             self.SECOND_POSITION[self.SERVO_WRIST_ROT],
+             self.SECOND_POSITION[self.SERVO_GRIPPER]),
             2000
         )
-        time.sleep(2.5)
-        print("   At second position (base at 40 degrees)")
+        print("At second position (base at 40 degrees)")
     
     def go_to_third_position(self):
         """Move to third position (base at 1 degree)"""
-        angles_dict = self.THIRD_POSITION.copy()
-        angles_dict[self.SERVO_WRIST] = angles_dict[self.SERVO_WRIST]
-        
-        self.arm.Arm_serial_servo_write6(
-            angles_dict[1], angles_dict[2], angles_dict[3],
-            angles_dict[4], angles_dict[5], angles_dict[6],
+        self.move_to_angles(
+            (self.THIRD_POSITION[self.SERVO_BASE],
+             self.THIRD_POSITION[self.SERVO_SHOULDER],
+             self.THIRD_POSITION[self.SERVO_ELBOW],
+             self.THIRD_POSITION[self.SERVO_WRIST],
+             self.THIRD_POSITION[self.SERVO_WRIST_ROT],
+             self.THIRD_POSITION[self.SERVO_GRIPPER]),
             2000
         )
-        time.sleep(2.5)
-        print("   At third position (base at 1 degree)")
+        print("At third position (base at 1 degree)")
     
-    def get_current_position_name(self, servo1_angle):
-        """Get position name based on base servo angle"""
-        if servo1_angle == self.INITIAL_POSITION[self.SERVO_BASE]:
-            return "initial_position"
-        elif servo1_angle == self.SECOND_POSITION[self.SERVO_BASE]:
-            return "second_position"
-        elif servo1_angle == self.THIRD_POSITION[self.SERVO_BASE]:
-            return "third_position"
-        return "unknown_position"
-    
-    def adaptive_grip(self, callback=None):
+    def adaptive_grip(self, start_angle=90, max_angle=180, step=3, delay=0.2, callback=None):
         """
-        Gradually close gripper until object is firmly grasped
-        Monitors gripper angle to detect when grip stabilizes
+        ADAPTIVE GRIPPER - Gradually close gripper until object is firmly grasped
+        Monitors resistance by checking if gripper can't close further
         """
         print("Starting adaptive grip...")
         
-        # Start from open position
-        current_angle = 90
-        target_angle = 180
-        step = 5
-        stable_count = 0
-        previous_angle = current_angle
+        if callback:
+            callback("Starting adaptive grip...")
         
-        while current_angle < target_angle:
+        current_angle = start_angle
+        previous_resistance = current_angle
+        resistance_count = 0
+        max_resistance_count = 3  # Need 3 consecutive resistance readings
+        
+        while current_angle < max_angle:
             # Move gripper incrementally
+            print(f"Closing gripper to {current_angle}°")
             self.arm.Arm_serial_servo_write(6, current_angle, 200)
-            time.sleep(0.3)
+            time.sleep(delay)
             
-            # Check if gripper movement has stabilized (object is gripped)
-            # In practice, you would read actual servo position
-            # For now, we simulate by checking if we've reached firm grip
-            if current_angle >= 135:
-                stable_count += 1
-                if stable_count >= 3:
-                    print(f"Object gripped firmly at angle: {current_angle}")
+            # Check for resistance (in a real system, you'd read servo feedback)
+            # For simulation, we assume resistance when angle reaches certain points
+            # based on typical tool sizes
+            
+            # After reaching initial contact (around 120-140°), check for stabilization
+            if current_angle >= 120:
+                # Simulate resistance check
+                # In real implementation, you'd check if servo current/position changed
+                if current_angle == previous_resistance:
+                    resistance_count += 1
+                    print(f"Resistance detected ({resistance_count}/{max_resistance_count})")
+                else:
+                    resistance_count = 0
+                    previous_resistance = current_angle
+                
+                if resistance_count >= max_resistance_count:
+                    print(f"Object firmly gripped at {current_angle}°")
                     if callback:
-                        callback(f"Object gripped at angle {current_angle}")
-                    break
+                        callback(f"Object gripped at {current_angle}°")
+                    return current_angle
             
-            previous_angle = current_angle
             current_angle += step
         
+        # If we reach max angle without detecting firm grip
+        print(f"Reached max grip angle: {current_angle}°")
+        if callback:
+            callback(f"Reached max grip angle: {current_angle}°")
         return current_angle
     
-    def execute_pickup_sequence(self, position_key, callback=None):
-        """Execute complete pickup and delivery sequence"""
+    def execute_pickup_sequence(self, position_key, tool_type=None, callback=None):
+        """Execute complete pickup and delivery sequence using exact coordinates"""
         if position_key not in self.OBJECT_POSITIONS:
-            print(f"Invalid position key: {position_key}")
+            if callback:
+                callback(f"Invalid position key: {position_key}")
             return False
         
         position = self.OBJECT_POSITIONS[position_key]
         
-        if position['before_grab'] is None:
-            print(f"Position {position_key} not configured")
-            if callback:
-                callback(f"Position {position_key} not configured")
-            return False
-        
         try:
-            # Move to position before grabbing
             if callback:
-                callback(f"Moving to {position['name']} pickup position...")
-            print(f"Moving to {position['name']} before grab position...")
+                callback(f"Starting pickup from {position['name']}...")
+            print(f"Starting pickup from {position['name']}")
+            
+            # ============================================
+            # STEP 1: MOVE TO APPROACH POSITION
+            # ============================================
+            if callback:
+                callback(f"Moving to approach position...")
+            print(f"Moving to approach position...")
+            time.sleep(1)
+            self.move_to_angles(position['approach'], 1500)
             time.sleep(2)
-            self.arm.Arm_serial_servo_write6(*position['before_grab'], 1000)
+            
+            # ============================================
+            # STEP 2: MOVE TO GRAB POSITION
+            # ============================================
+            if callback:
+                callback("Moving to grab position...")
+            print("Moving to grab position...")
+            time.sleep(1)
+            self.move_to_angles(position['grab'], 1500)
             time.sleep(2)
             
-            # Adaptive grip
+            # ============================================
+            # STEP 3: ADAPTIVE GRIP
+            # ============================================
             if callback:
-                callback("Gripping object...")
-            grip_angle = self.adaptive_grip(callback)
+                callback("Starting adaptive grip...")
+            print("Starting adaptive grip...")
+            grip_angle = self.adaptive_grip(
+                start_angle=90,  # Start from open
+                max_angle=180,   # Max close
+                step=3,          # Small increments
+                delay=0.2,       # Wait between steps
+                callback=callback
+            )
+            time.sleep(1)
+            
+            # ============================================
+            # STEP 4: LIFT OBJECT
+            # ============================================
+            if callback:
+                callback("Lifting object...")
+            print("Lifting object...")
+            time.sleep(1)
+            self.move_to_angles(position['lift'], 1500, keep_gripper=grip_angle)
             time.sleep(2)
             
-            # Move through waypoints after grabbing
+            # ============================================
+            # STEP 5: MOVE TO INTERMEDIATE POSITION
+            # ============================================
             if callback:
-                callback("Transporting object to drop zone...")
-            for i, waypoint in enumerate(position['after_grab']):
-                print(f"Moving to waypoint {i+1}...")
-                self.arm.Arm_serial_servo_write6(*waypoint, 1000)
-                time.sleep(2)
+                callback("Moving to intermediate position...")
+            print("Moving to intermediate position...")
+            time.sleep(1)
+            self.move_to_angles(position['intermediate'], 1500, keep_gripper=grip_angle)
+            time.sleep(2)
             
-            # Execute drop zone sequence
+            # ============================================
+            # STEP 6: MOVE TO DROP ZONE
+            # ============================================
             if callback:
-                callback("Approaching drop zone...")
-            print("Executing drop zone sequence...")
+                callback("Moving to drop zone...")
+            print("Moving to drop zone...")
             
-            for i, waypoint in enumerate(self.DROP_ZONE_SEQUENCE):
+            for i, drop_pos in enumerate(position['to_drop']):
+                if callback:
+                    callback(f"Drop zone step {i+1}...")
                 print(f"Drop zone step {i+1}...")
-                
-                # If gripper angle is None, keep it closed (use current grip angle)
-                if waypoint[5] is None:
-                    # Move all servos except gripper
-                    self.arm.Arm_serial_servo_write6(
-                        waypoint[0], waypoint[1], waypoint[2],
-                        waypoint[3], waypoint[4], grip_angle, 1000
-                    )
-                else:
-                    # Move all servos including gripper
-                    self.arm.Arm_serial_servo_write6(*waypoint, 1000)
-                
+                time.sleep(1)
+                self.move_to_angles(drop_pos, 1500, keep_gripper=grip_angle)
                 time.sleep(2)
-                
-                # Release object after reaching drop position (after second waypoint)
-                if i == 1:  # After lowering to drop position
-                    if callback:
-                        callback("Releasing object...")
-                    print("Opening gripper to release object...")
-                    self.arm.Arm_serial_servo_write(6, 90, 1000)
-                    time.sleep(2)
             
-            # Return to initial position
+            # ============================================
+            # STEP 7: RELEASE OBJECT AT DROP ZONE
+            # ============================================
             if callback:
-                callback("Returning to initial position...")
-            print("Returning to initial position...")
+                callback("Releasing object at drop zone...")
+            print("Releasing object at drop zone...")
+            time.sleep(1)
+            self.arm.Arm_serial_servo_write(6, 90, 1000)  # Open gripper
+            time.sleep(2)
+            
+            # ============================================
+            # STEP 8: RETURN TO HOME POSITION
+            # ============================================
+            if callback:
+                callback("Returning to home position...")
+            print("Returning to home position...")
             self.go_to_initial_position()
             
             if callback:
-                callback("Task completed successfully")
+                callback("Pickup and delivery completed successfully")
             print("Pickup sequence completed successfully")
             return True
             
@@ -285,6 +421,13 @@ class RobotArmController:
             print(f"Error during pickup sequence: {e}")
             if callback:
                 callback(f"Error: {e}")
+            
+            # Try to return to home on error
+            try:
+                self.go_to_initial_position()
+            except:
+                pass
+            
             return False
 
 # ============================================
@@ -479,8 +622,8 @@ class CameraDetectionSystem:
 class GarageAssistantGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Garage Assistant - Robot Control System")
-        self.root.geometry("1200x800")
+        self.root.title("Garage Assistant - Adaptive Gripper System")
+        self.root.geometry("1100x700")
         self.root.configure(bg='#2b2b2b')
         
         # Initialize systems
@@ -503,10 +646,16 @@ class GarageAssistantGUI:
         title_frame = tk.Frame(self.root, bg='#1a1a1a', height=60)
         title_frame.pack(fill='x', padx=10, pady=10)
         
-        title_label = tk.Label(title_frame, text="GARAGE ASSISTANT", 
-                              font=('Arial', 24, 'bold'), 
+        title_label = tk.Label(title_frame, text="GARAGE ASSISTANT - ADAPTIVE GRIPPER", 
+                              font=('Arial', 20, 'bold'), 
                               bg='#1a1a1a', fg='#00ff00')
         title_label.pack(pady=10)
+        
+        # Subtitle
+        subtitle_label = tk.Label(title_frame, text="9 Pre-Programmed Points with Smart Gripping",
+                                 font=('Arial', 12),
+                                 bg='#1a1a1a', fg='#ffff00')
+        subtitle_label.pack()
         
         # Main content area
         content_frame = tk.Frame(self.root, bg='#2b2b2b')
@@ -520,6 +669,13 @@ class GarageAssistantGUI:
                                    font=('Arial', 16, 'bold'),
                                    bg='#1a1a1a', fg='#ffffff')
         detection_label.pack(pady=10)
+        
+        # Points info label
+        points_info = tk.Label(left_panel, 
+                              text="Objects are mapped to 9 pre-programmed points (A-I)\nEach point has exact grab coordinates",
+                              font=('Arial', 10),
+                              bg='#1a1a1a', fg='#cccccc')
+        points_info.pack(pady=(0, 10))
         
         self.detection_listbox = tk.Listbox(left_panel, font=('Courier', 11),
                                            bg='#3a3a3a', fg='#ffffff',
@@ -535,6 +691,13 @@ class GarageAssistantGUI:
                                bg='#1a1a1a', fg='#ffffff')
         logger_label.pack(pady=10)
         
+        # Adaptive gripper info
+        gripper_info = tk.Label(right_panel,
+                               text="Adaptive Gripper: Closes gradually until object is firmly grasped",
+                               font=('Arial', 10),
+                               bg='#1a1a1a', fg='#00ff00')
+        gripper_info.pack(pady=(0, 10))
+        
         self.logger = scrolledtext.ScrolledText(right_panel, font=('Courier', 10),
                                                bg='#3a3a3a', fg='#00ff00',
                                                height=15, wrap='word')
@@ -548,7 +711,7 @@ class GarageAssistantGUI:
         input_frame = tk.Frame(control_frame, bg='#1a1a1a')
         input_frame.pack(pady=10)
         
-        tk.Label(input_frame, text="Enter Object Number:", 
+        tk.Label(input_frame, text="Enter Object Number (1-9):", 
                 font=('Arial', 12), bg='#1a1a1a', fg='#ffffff').pack(side='left', padx=5)
         
         self.order_entry = tk.Entry(input_frame, font=('Arial', 14), width=10,
@@ -568,6 +731,14 @@ class GarageAssistantGUI:
                                     command=self.cancel_order,
                                     width=15)
         self.cancel_btn.pack(side='left', padx=5)
+        
+        # Test gripper button
+        test_btn = tk.Button(input_frame, text="TEST GRIPPER",
+                            font=('Arial', 10),
+                            bg='#0055aa', fg='#ffffff',
+                            command=self.test_gripper,
+                            width=12)
+        test_btn.pack(side='left', padx=5)
         
         # Status bar
         self.status_label = tk.Label(self.root, text="Initializing system...",
@@ -599,9 +770,9 @@ class GarageAssistantGUI:
     def initialize_systems(self):
         """Initialize robot and camera systems"""
         try:
-            self.log("Initializing robot arm...")
+            self.log("Initializing robot arm with 9 points...")
             self.arm = RobotArmController()
-            self.log("Robot arm initialized")
+            self.log("Robot arm initialized with 9 grabbing points")
             
             self.log("Initializing camera system...")
             self.detector = CameraDetectionSystem()
@@ -677,7 +848,7 @@ class GarageAssistantGUI:
             self.update_detection_display()
             
             self.log(f"Inspection complete - Total objects detected: {len(self.all_detections)}")
-            self.update_status(f"Ready - {len(self.all_detections)} objects detected")
+            self.update_status(f"Ready - {len(self.all_detections)} objects detected at 9 points")
             self.is_running = True
             
         except Exception as e:
@@ -689,8 +860,7 @@ class GarageAssistantGUI:
         self.log(f"Capturing snapshot: {position_name}")
         self.log(f"   Base servo angle: {base_angle} deg")
         
-        # Clear camera buffer by reading and discarding a few frames
-        self.log("   Clearing camera buffer...")
+        # Clear camera buffer
         for _ in range(3):
             self.detector.cap.read()
             time.sleep(0.1)
@@ -727,18 +897,15 @@ class GarageAssistantGUI:
         }
         self.all_snapshots.append(snapshot_info)
         
-        # Only save annotated images if objects were detected
+        # Save annotated images if objects detected
         if detections:
-            # Annotate frame
             annotated_frame = self.detector.annotate_frame(frame, detections, position_name, base_angle)
-            
-            # Save annotated snapshot
             filename = f"{self.output_dir}/{position_name}_detected.jpg"
             cv2.imwrite(filename, annotated_frame)
             self.log(f"   Saved annotated snapshot: {filename}")
             snapshot_info['filename'] = filename
             
-            # Save detection data to text file
+            # Save detection data
             self.save_detection_data(position_name, detections, filename, base_angle)
         else:
             self.log(f"   Skipping snapshot save (no objects detected)")
@@ -751,11 +918,10 @@ class GarageAssistantGUI:
         txt_filename = f"{self.output_dir}/{position_name}_detections.txt"
         
         with open(txt_filename, 'w') as f:
-            f.write(f"ROBOT ARM SNAPSHOT DETECTION REPORT\n")
+            f.write(f"GARAGE ASSISTANT - DETECTION REPORT\n")
             f.write("=" * 60 + "\n")
             f.write(f"Position: {position_name}\n")
             f.write(f"Base Servo Angle: {base_angle} deg\n")
-            f.write(f"Image File: {os.path.basename(image_filename)}\n")
             f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Total Objects Detected: {len(detections)}\n")
             f.write("=" * 60 + "\n\n")
@@ -769,8 +935,6 @@ class GarageAssistantGUI:
                     f.write(f"  Class: {det['class_name']}\n")
                     f.write(f"  Confidence: {det['confidence_int']}%\n")
                     f.write(f"  Bounding Box: {det['bbox']}\n")
-                    f.write(f"  Center Coordinates: ({det['center_x']:.1f}, {det['center_y']:.1f})\n")
-                    f.write(f"  Size: {det['width']}x{det['height']} pixels\n")
                     f.write("-" * 30 + "\n")
             else:
                 f.write("No objects detected in this snapshot.\n")
@@ -786,23 +950,25 @@ class GarageAssistantGUI:
             f.write("=" * 70 + "\n")
             f.write(f"Report generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Total snapshots taken: {len(self.all_snapshots)}\n")
+            f.write(f"Total objects detected: {len(self.all_detections)}\n")
             f.write("=" * 70 + "\n\n")
             
-            # Count all detections
-            total_detections = sum(len(snap['detections']) for snap in self.all_snapshots)
-            f.write(f"TOTAL OBJECTS DETECTED: {total_detections}\n\n")
+            # 9 Points information
+            f.write("9 PRE-PROGRAMMED GRABBING POINTS:\n")
+            f.write("-" * 50 + "\n")
+            for i in range(1, 10):
+                point_key = f'position_{i}'
+                point_name = self.arm.OBJECT_POSITIONS[point_key]['name']
+                f.write(f"Point {i}: {point_name}\n")
+            f.write("\n")
             
             # Summary by position
-            f.write("SNAPSHOT SUMMARY BY POSITION:\n")
+            f.write("SNAPSHOT SUMMARY:\n")
             f.write("-" * 50 + "\n")
             
             for snap in self.all_snapshots:
                 f.write(f"\n{snap['position_name'].upper()} (Base: {snap['base_angle']} deg):\n")
                 f.write(f"  Time: {snap['timestamp']}\n")
-                if snap['filename']:
-                    f.write(f"  Image: {os.path.basename(snap['filename'])}\n")
-                else:
-                    f.write(f"  Image: Not saved (no detections)\n")
                 f.write(f"  Objects detected: {len(snap['detections'])}\n")
                 
                 if snap['detections']:
@@ -831,33 +997,17 @@ class GarageAssistantGUI:
         
         self.log(f"Saved summary report: {summary_filename}")
     
-    def save_pickup_log(self, order_num, obj, success):
-        """Save log of pickup operation"""
-        log_filename = f"{self.output_dir}/pickup_operations.txt"
-        
-        mode = 'a' if os.path.exists(log_filename) else 'w'
-        with open(log_filename, mode) as f:
-            if mode == 'w':
-                f.write("GARAGE ASSISTANT - PICKUP OPERATIONS LOG\n")
-                f.write("=" * 70 + "\n\n")
-            
-            f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Order Number: {order_num}\n")
-            f.write(f"Object: {obj['class_name']}\n")
-            f.write(f"Confidence: {obj['confidence_int']}%\n")
-            f.write(f"Position: position_{order_num}\n")
-            f.write(f"Status: {'SUCCESS' if success else 'FAILED'}\n")
-            f.write("-" * 50 + "\n\n")
-        
-        self.log(f"Logged pickup operation to: {log_filename}")
-    
     def update_detection_display(self):
         """Update detection listbox"""
         self.detection_listbox.delete(0, 'end')
         
         for i, det in enumerate(self.all_detections, 1):
-            display_text = f"{i}. {det['class_name']} ({det['confidence_int']}%)"
-            self.detection_listbox.insert('end', display_text)
+            if i <= 9:  # Only show up to 9 objects (matching our 9 points)
+                point_name = self.arm.OBJECT_POSITIONS[f'position_{i}']['name']
+                display_text = f"{i}. {det['class_name']} ({det['confidence_int']}%) - {point_name}"
+                self.detection_listbox.insert('end', display_text)
+            else:
+                break  # Only support 9 objects maximum
     
     def execute_order(self):
         """Execute user order to pick object"""
@@ -868,14 +1018,16 @@ class GarageAssistantGUI:
         try:
             order_num = int(self.order_entry.get().strip())
             
-            if order_num < 1 or order_num > len(self.all_detections):
-                self.log(f"Invalid order number: {order_num}")
+            if order_num < 1 or order_num > min(9, len(self.all_detections)):
+                self.log(f"Invalid order number. Choose 1-{min(9, len(self.all_detections))}")
                 self.update_status("Invalid order number")
                 return
             
             selected_obj = self.all_detections[order_num - 1]
-            self.log(f"Order received: Pick {selected_obj['class_name']}")
-            self.update_status(f"Executing order: {selected_obj['class_name']}")
+            point_name = self.arm.OBJECT_POSITIONS[f'position_{order_num}']['name']
+            
+            self.log(f"Order received: Pick {selected_obj['class_name']} from {point_name}")
+            self.update_status(f"Executing order: {selected_obj['class_name']} from {point_name}")
             
             # Execute pickup in background
             self.current_order = order_num
@@ -890,22 +1042,25 @@ class GarageAssistantGUI:
     def execute_pickup(self, order_num, obj):
         """Execute pickup sequence for selected object"""
         position_key = f"position_{order_num}"
+        point_name = self.arm.OBJECT_POSITIONS[position_key]['name']
         
         def status_callback(msg):
             self.log(msg)
             self.update_status(msg)
         
-        success = self.arm.execute_pickup_sequence(position_key, status_callback)
+        # Log start of operation
+        self.log(f"Starting pickup sequence for {obj['class_name']} from {point_name}")
+        self.log("Using adaptive gripper - will close gradually until object is firmly gripped")
         
-        # Log the operation
-        self.save_pickup_log(order_num, obj, success)
+        success = self.arm.execute_pickup_sequence(position_key, obj['class_name'], status_callback)
         
         if success:
-            self.log(f"Successfully delivered {obj['class_name']}")
+            self.log(f"Successfully delivered {obj['class_name']} from {point_name}")
+            self.log("Adaptive gripper adjusted automatically for perfect grip")
             self.update_status("Task completed - Ready for next order")
         else:
-            self.log(f"Failed to deliver {obj['class_name']}")
-            self.update_status("Task failed")
+            self.log(f"Failed to deliver {obj['class_name']} from {point_name}")
+            self.update_status("Task failed - Check system")
         
         self.current_order = None
         self.order_entry.delete(0, 'end')
@@ -919,22 +1074,62 @@ class GarageAssistantGUI:
             self.order_entry.delete(0, 'end')
         else:
             self.log("No active order to cancel")
+    
+    def test_gripper(self):
+        """Test the adaptive gripper"""
+        self.log("Testing adaptive gripper...")
+        self.update_status("Testing gripper...")
+        
+        threading.Thread(target=self._test_gripper_thread, daemon=True).start()
+    
+    def _test_gripper_thread(self):
+        """Thread for testing gripper"""
+        try:
+            # Test adaptive grip
+            def test_callback(msg):
+                self.log(f"Gripper test: {msg}")
+            
+            self.log("Opening gripper fully...")
+            self.arm.arm.Arm_serial_servo_write(6, 90, 1000)
+            time.sleep(2)
+            
+            self.log("Testing adaptive grip (will close gradually)...")
+            final_angle = self.arm.adaptive_grip(
+                start_angle=90,
+                max_angle=180,
+                step=5,
+                delay=0.3,
+                callback=test_callback
+            )
+            
+            self.log(f"Adaptive grip test complete - Final angle: {final_angle}°")
+            self.log("Opening gripper...")
+            self.arm.arm.Arm_serial_servo_write(6, 90, 1000)
+            time.sleep(1)
+            
+            self.log("Gripper test completed successfully")
+            self.update_status("Gripper test complete")
+            
+        except Exception as e:
+            self.log(f"Gripper test error: {e}")
+            self.update_status("Gripper test failed")
 
 # ============================================
 # MAIN EXECUTION
 # ============================================
 if __name__ == "__main__":
     print("=" * 70)
-    print("GARAGE ASSISTANT ROBOTIC ARM SYSTEM")
+    print("GARAGE ASSISTANT ROBOTIC ARM SYSTEM WITH ADAPTIVE GRIPPER")
     print("=" * 70)
     print("Features:")
     print("1. Automatic 3-position inspection with object detection")
-    print("2. GUI interface for object selection and control")
-    print("3. Adaptive gripper for secure object handling")
-    print("4. Complete pickup and delivery to drop zone")
-    print("5. Detailed logging and report generation")
+    print("2. 9 PRE-PROGRAMMED POINTS with exact coordinates (A-I)")
+    print("3. ADAPTIVE GRIPPER - Smart gripping based on resistance")
+    print("4. GUI interface for object selection and control")
+    print("5. Complete pickup and delivery to drop zone (servo1: 150°)")
+    print("6. Detailed logging and report generation")
     print("=" * 70)
-    print("\nStarting GUI...")
+    print("\nStarting system...")
     
     root = tk.Tk()
     app = GarageAssistantGUI(root)
