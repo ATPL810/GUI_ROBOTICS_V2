@@ -42,7 +42,7 @@ class GrabPointAnalyzer:
             return folder
         
         # Look for snapshot folders
-        snapshots_dir = "data/snapshots"
+        snapshots_dir = "/data/snapshots"
         if not os.path.exists(snapshots_dir):
             raise FileNotFoundError(f"Snapshot directory not found: {snapshots_dir}")
         

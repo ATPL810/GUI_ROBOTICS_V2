@@ -1,0 +1,39 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: initial_position
+Base Servo Angle: 90°
+Image File: initial_position.jpg
+Timestamp: 2025-12-08 13:56:58
+Total Objects Detected: 4
+============================================================
+
+DETECTED OBJECTS:
+----------------------------------------
+Object #1:
+  Class: Bolt
+  Confidence: 96.2%
+  Bounding Box: (17, 174, 152, 291)
+  Center Coordinates: (84.5, 232.5)
+  Size: 135x117 pixels
+------------------------------
+Object #2:
+  Class: Bolt
+  Confidence: 93.8%
+  Bounding Box: (373, 78, 446, 206)
+  Center Coordinates: (409.5, 142.0)
+  Size: 73x128 pixels
+------------------------------
+Object #3:
+  Class: Wrench
+  Confidence: 91.2%
+  Bounding Box: (410, 67, 639, 479)
+  Center Coordinates: (524.5, 273.0)
+  Size: 229x412 pixels
+------------------------------
+Object #4:
+  Class: Wrench
+  Confidence: 75.5%
+  Bounding Box: (170, 34, 342, 479)
+  Center Coordinates: (256.0, 256.5)
+  Size: 172x445 pixels
+------------------------------

@@ -1,0 +1,46 @@
+ROBOT ARM AUTOMATIC SNAPSHOT SYSTEM - SUMMARY REPORT
+======================================================================
+Report generated: 2025-12-08 13:43:16
+Total snapshots taken: 3
+======================================================================
+
+TOTAL OBJECTS DETECTED: 9
+
+SNAPSHOT SUMMARY BY POSITION:
+--------------------------------------------------
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-08 13:42:57
+  Image: initial_position.jpg
+  Objects detected: 4
+  Detected objects:
+    • Bolt: 95.4%
+    • Hammer: 93.2%
+    • Bolt: 91.5%
+    • Wrench: 76.1%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-08 13:43:04
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Screwdriver: 94.8%
+    • Wrench: 92.7%
+    • Bolt: 88.8%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-08 13:43:10
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Measuring Tape: 83.2%
+    • Screwdriver: 76.5%
+
+======================================================================
+DETECTION STATISTICS BY TOOL TYPE:
+----------------------------------------
+Bolt: 3 detection(s)
+Hammer: 1 detection(s)
+Measuring Tape: 1 detection(s)
+Screwdriver: 2 detection(s)
+Wrench: 2 detection(s)
