@@ -111,36 +111,38 @@ try:
 
     # time.sleep(2)
     # arm.Arm_serial_servo_write6(90,90,90,90,90,80, 1000)
-# ------------------------------------------------------- Measuring tape
-    time.sleep(3)
-    arm.Arm_serial_servo_write6(1, 105, 45, -2, 89, 20, 1000)
-    time.sleep(2)   
-    arm.Arm_serial_servo_write6(-10, 71, 39, 2, 88, 20, 1000)
-    time.sleep(2)
-    arm.Arm_serial_servo_write6(-10, 67, 39, 2, 10, 20, 1000)
-    time.sleep(2)
-    arm.Arm_serial_servo_write6(-10, 38, 49, 16, 10, 20, 1000)
+# ------------------------------------------------------- Bolt
+
+    """Grabbing point F - Bolt"""
+    print("Starting Grab Point F - Bolt")
+    
+    # move to pos Before grabbing
+    time.sleep(3)  
+    arm.Arm_serial_servo_write6(37, 35, 33, 61, 87, 77, 1000)
+
+    time.sleep(2) 
+    arm.Arm_serial_servo_write6(39, 35, 30, 69, 89, 75, 1000)
+
+    
     # grabbing
     time.sleep(2)
-    arm.Arm_serial_servo_write(6, 156, 1000)
+    arm.Arm_serial_servo_write(6, 179, 1000)
 
     # move to pos After grabbing object while holding it
     time.sleep(2)
-    arm.Arm_serial_servo_write6(5, 72, 59, 18, 10, 157, 1000)
+    arm.Arm_serial_servo_write6(37, 62, 51, 77, 87, 178, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(40, 90, 55, 60, 90, 157, 1000)
+    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, 178, 1000)
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(150, 40, 55, 45, 90, 157, 1000)
+    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 178, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(150, 30, 55, 45, 90, 155, 1000)
-    time.sleep(2)
-    arm.Arm_serial_servo_write6(150,30,55,45,90,36, 1000)
+    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 130, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 20, 1000)
-    print("Grab Point G completed")
+    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 1000)
+    print("Grab Point F completed")
 
 
 
