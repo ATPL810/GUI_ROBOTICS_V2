@@ -198,7 +198,7 @@ class RobotArmController:
     def convert_angle(self, angle):
         """Convert negative angles to servo range (0-180)"""
         if angle < 0:
-            return 180 + angle  # -35 becomes 145, -15 becomes 165, etc.
+            return  angle  # -35 becomes 145, -15 becomes 165, etc.
         return angle
     
     def move_to_angles(self, angles_tuple, move_time=1000, keep_gripper=None):
@@ -479,7 +479,7 @@ class CameraDetectionSystem:
         """Load YOLO model"""
         print("   Loading YOLO model...")
         
-        model_paths = ['./best_2s.pt']
+        model_paths = ['./best_best.pt']
         
         for path in model_paths:
             if os.path.exists(path):

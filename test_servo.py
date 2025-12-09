@@ -24,7 +24,7 @@ try:
     
     print("✅ Arm test complete!")
 #  INiitial positions
-    arm.Arm_serial_servo_write(1,90, 1000)
+    arm.Arm_serial_servo_write(1,1, 1000)
     arm.Arm_serial_servo_write(2, 105, 1000)
     arm.Arm_serial_servo_write(3, 45, 1000)
     arm.Arm_serial_servo_write(4, -35, 1000)
@@ -86,31 +86,61 @@ try:
     # Grabbing point I - 
 
     # move to pos Before grabbing - hammer(167), 
-    time.sleep(3)
-    arm.Arm_serial_servo_write6(13,50,37,37,93,87, 1000)
-    time.sleep(2)   
-    arm.Arm_serial_servo_write6(8,3,86,34,123,86, 1000)
+    # time.sleep(3)
+    # arm.Arm_serial_servo_write6(13,50,37,37,93,87, 1000)
+    # time.sleep(2)   
+    # arm.Arm_serial_servo_write6(8,3,86,34,123,86, 1000)
     
-    #  grabbing
+    # #  grabbing
 
-    time.sleep(2)
-    arm.Arm_serial_servo_write(6, 167, 1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write(6, 167, 1000)
 
-    # arm.Arm_serial_servo_write(6, 145, 1000)
+    # # arm.Arm_serial_servo_write(6, 145, 1000)
 
-    # move to pos After grabbing object while hlding it
+    # # move to pos After grabbing object while hlding it
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(9,26,98,35,123,167, 1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(120,90,55,60,90,163, 1000)
+    # time.sleep(2)
+    # # tightening
+    # arm.Arm_serial_servo_write6(130,40,55,45,90,163,1000)
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(130,30,55,45,90,100, 1000)
+
+    # time.sleep(2)
+    # arm.Arm_serial_servo_write6(90,90,90,90,90,80, 1000)
+# ------------------------------------------------------- Measuring tape
+    time.sleep(3)
+    arm.Arm_serial_servo_write6(1, 105, 45, -2, 89, 20, 1000)
+    time.sleep(2)   
+    arm.Arm_serial_servo_write6(-10, 71, 39, 2, 88, 20, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(9,26,98,35,123,167, 1000)
+    arm.Arm_serial_servo_write6(-10, 67, 39, 2, 10, 20, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(120,90,55,60,90,163, 1000)
+    arm.Arm_serial_servo_write6(-10, 38, 49, 16, 10, 20, 1000)
+    # grabbing
     time.sleep(2)
+    arm.Arm_serial_servo_write(6, 156, 1000)
+
+    # move to pos After grabbing object while holding it
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(5, 72, 59, 18, 10, 157, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(40, 90, 55, 60, 90, 157, 1000)
+    time.sleep(2)
+    
     # tightening
-    arm.Arm_serial_servo_write6(130,40,55,45,90,163,1000)
+    arm.Arm_serial_servo_write6(150, 40, 55, 45, 90, 157, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(130,30,55,45,90,100, 1000)
+    arm.Arm_serial_servo_write6(150, 30, 55, 45, 90, 155, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(150,30,55,45,90,36, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90,90,90,90,90,80, 1000)
+    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 20, 1000)
+    print("Grab Point G completed")
 
 
 

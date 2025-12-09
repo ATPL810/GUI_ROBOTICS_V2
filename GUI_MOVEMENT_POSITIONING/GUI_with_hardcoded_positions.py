@@ -475,10 +475,10 @@ class RobotArmController:
             print(f"Failed to initialize robot arm: {e}")
             raise
     
-    def convert_angle(self, angle):
-        if angle < 0:
-            return 180 + angle
-        return angle
+    # def convert_angle(self, angle):
+    #     if angle < 0:
+    #         return 180 + angle
+    #     return angle
     
     def go_to_initial_position(self):
         self.move_to_position(self.INITIAL_POSITION)
@@ -488,7 +488,7 @@ class RobotArmController:
         servo1 = position_dict.get(self.SERVO_BASE, 90)
         servo2 = position_dict.get(self.SERVO_SHOULDER, 105)
         servo3 = position_dict.get(self.SERVO_ELBOW, 45)
-        servo4 = self.convert_angle(position_dict.get(self.SERVO_WRIST, -35))
+        servo4 = (position_dict.get(self.SERVO_WRIST, -35))
         servo5 = position_dict.get(self.SERVO_WRIST_ROT, 90)
         servo6 = position_dict.get(self.SERVO_GRIPPER, 90)
         
@@ -564,7 +564,7 @@ class CameraDetectionSystem:
         raise Exception("No camera found!")
     
     def load_yolo_model(self):
-        model_paths = ['./best_2s.pt']
+        model_paths = ['./best_best.pt']
         for path in model_paths:
             if os.path.exists(path):
                 try:

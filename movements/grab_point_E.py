@@ -6,13 +6,13 @@ def grab_point_E(arm, tool_type="hammer"):
     
     # Define grip force for each tool
     grip_forces = {
-        "hammer": 169,
+        "hammer": 165,
         "screwdriver": 169,
         "yellow_wrench": 154,
         "red_spanner": 176
     }
     
-    grip_force = grip_forces.get(tool_type, 169)  # default to hammer
+    grip_force = grip_forces.get(tool_type, 165)  # default to hammer
     
     # move to pos Before grabbing
     time.sleep(3)
@@ -26,15 +26,15 @@ def grab_point_E(arm, tool_type="hammer"):
 
     # move to pos After grabbing object while holding it
     time.sleep(2)
-    arm.Arm_serial_servo_write6(31, 65, 71, 22, 102, 176, 1000)
+    arm.Arm_serial_servo_write6(31, 65, 71, 22, 102, grip_force, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, 176, 1000)
+    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, grip_force, 1000)
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 176, 1000)
+    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, grip_force, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 176, 1000)
+    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, grip_force, 1000)
 
     time.sleep(2)
     arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 1000)

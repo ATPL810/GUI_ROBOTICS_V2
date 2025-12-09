@@ -72,7 +72,7 @@ class GrabPointAnalyzer:
                 "D": {"x": 480, "y": 420}
             },
             "second_position": {
-                "E": {"x": 240, "y": 380},
+                "E": {"x": 260, "y": 240},
                 "F": {"x": 300, "y": 155},
                 "G": {"x": 425, "y": 420}
             },
@@ -172,7 +172,7 @@ class GrabPointAnalyzer:
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
     def assign_tools_to_grab_points(self, max_distance=200):
-        """Assign the closest tool to each grab point"""
+        """Assign the closest tool to each grab point with one-to-one mapping"""
         print("\n" + "=" * 70)
         print("ASSIGNING TOOLS TO GRAB POINTS")
         print("=" * 70)
@@ -184,55 +184,99 @@ class GrabPointAnalyzer:
             print(f"\nProcessing {position_name.upper().replace('_', ' ')}:")
             print("-" * 40)
             
+            # Reset assigned_tools for each position
+            assigned_tools = set()  # This ensures tools are only assigned within their position
+            
             # Get detections for this position
             if position_name not in self.detections_data:
                 print(f"  No detection data for {position_name}")
                 continue
             
             position_detections = self.detections_data[position_name]["detections"]
+            print(f"  Found {len(position_detections)} tools in this position")
             
-            # Process each grab point in this position
+            if not position_detections:
+                print(f"  No tools detected in {position_name}")
+                # Mark all grab points in this position as unassigned
+                for point_id, point_coords in grab_points.items():
+                    assignments[point_id] = {
+                        "class_name": "none",
+                        "confidence": 0.0,
+                        "distance": float('inf'),
+                        "tool_center": None,
+                        "grab_point": (point_coords["x"], point_coords["y"])
+                    }
+                    print(f"  Point {point_id}: No tool assigned (no tools detected)")
+                continue
+            
+            # Create a list of all possible grab point-tool pairs with distances
+            all_pairs = []
+            
             for point_id, point_coords in grab_points.items():
                 grab_point = (point_coords["x"], point_coords["y"])
                 
-                closest_tool = None
-                min_distance = float('inf')
-                closest_tool_data = None
-                
-                # Find closest tool to this grab point
-                for detection in position_detections:
+                for i, detection in enumerate(position_detections):
                     if "center" not in detection:
                         continue
                     
                     tool_center = detection["center"]
                     distance = self.calculate_distance(grab_point, tool_center)
                     
-                    # Check if within maximum distance and closer than previous
-                    if distance < max_distance and distance < min_distance:
-                        min_distance = distance
-                        closest_tool = detection["class_name"]
-                        closest_tool_data = {
-                            "class_name": detection["class_name"],
-                            "confidence": detection["confidence"],
+                    # Only consider tools within maximum distance
+                    if distance <= max_distance:
+                        all_pairs.append({
+                            "point_id": point_id,
+                            "grab_point": grab_point,
+                            "tool_index": i,  # Track the tool by index
                             "distance": distance,
-                            "tool_center": tool_center,
-                            "grab_point": grab_point
-                        }
+                            "detection": detection
+                        })
+            
+            print(f"  Found {len(all_pairs)} valid grab point-tool pairs")
+            
+            # Sort all pairs by distance (closest first)
+            all_pairs.sort(key=lambda x: x["distance"])
+            
+            # Assign tools to grab points in order of increasing distance
+            for pair in all_pairs:
+                point_id = pair["point_id"]
+                tool_index = pair["tool_index"]
                 
-                # Store assignment
-                if closest_tool:
-                    assignments[point_id] = closest_tool_data
-                    print(f"  Point {point_id}: Assigned to {closest_tool}")
-                    print(f"      Distance: {min_distance:.1f}px, Confidence: {closest_tool_data['confidence']*100:.1f}%")
-                else:
+                # Skip if this grab point already has an assignment
+                if point_id in assignments:
+                    continue
+                    
+                # Skip if this tool is already assigned in this position
+                if tool_index in assigned_tools:
+                    continue
+                    
+                # Assign this tool to this grab point
+                detection = pair["detection"]
+                assignments[point_id] = {
+                    "class_name": detection["class_name"],
+                    "confidence": detection["confidence"],
+                    "distance": pair["distance"],
+                    "tool_center": detection["center"],
+                    "grab_point": pair["grab_point"]
+                }
+                
+                # Mark this tool as assigned in this position
+                assigned_tools.add(tool_index)
+                
+                print(f"  Point {point_id}: Assigned to {detection['class_name']}")
+                print(f"      Distance: {pair['distance']:.1f}px, Confidence: {detection['confidence']*100:.1f}%")
+            
+            # Mark unassigned grab points in this position
+            for point_id, point_coords in grab_points.items():
+                if point_id not in assignments:
                     assignments[point_id] = {
                         "class_name": "none",
                         "confidence": 0.0,
                         "distance": float('inf'),
                         "tool_center": None,
-                        "grab_point": grab_point
+                        "grab_point": (point_coords["x"], point_coords["y"])
                     }
-                    print(f"  Point {point_id}: No tool assigned (closest tool > {max_distance}px)")
+                    print(f"  Point {point_id}: No tool assigned (no unassigned tools within {max_distance}px)")
         
         self.grab_point_assignments = assignments
         return assignments

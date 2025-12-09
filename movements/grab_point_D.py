@@ -22,17 +22,17 @@ def grab_point_D(arm, tool_type="yellow_wrench"):
     
     # grabbing
     time.sleep(2)
-    arm.Arm_serial_servo_write(6, 175, 1000)
+    arm.Arm_serial_servo_write(6, grip_force, 1000)
 
     # move to pos After grabbing
     time.sleep(2)
-    arm.Arm_serial_servo_write6(103, 54, 40, 34, 90, 175, 1000)
+    arm.Arm_serial_servo_write6(103, 54, 40, 34, 90, grip_force, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, 176, 1000)
+    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, grip_force, 1000)
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 176, 1000)
+    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, grip_force, 1000)
     time.sleep(2)
     arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 125, 1000)
 

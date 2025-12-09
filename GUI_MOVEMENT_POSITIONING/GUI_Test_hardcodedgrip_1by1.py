@@ -20,7 +20,7 @@ class GarageAssistant:
         
         # Load YOLO model
         try:
-            self.model = YOLO('./best_2s.pt')
+            self.model = YOLO('./best_best.pt')
             self.model.overrides['conf'] = 0.35
             self.model.overrides['iou'] = 0.3
             self.model.overrides['max_det'] = 6
@@ -58,7 +58,7 @@ class GarageAssistant:
     def init_arm(self):
         """Initialize arm to home position"""
         # Initial position (servo4: -35 becomes 145)
-        self.arm.Arm_serial_servo_write6(90, 105, 45, 145, 90, 90, 2000)
+        self.arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 2000)
         time.sleep(2.5)
     
     def take_snapshots(self):
@@ -73,7 +73,7 @@ class GarageAssistant:
         
         for angle, pos_name in positions:
             print(f"Moving to {pos_name} (base: {angle}°)")
-            self.arm.Arm_serial_servo_write6(angle, 105, 45, 145, 90, 90, 2000)
+            self.arm.Arm_serial_servo_write6(angle, 105, 45, -35, 90, 90, 2000)
             time.sleep(3)
             
             # Detect objects
@@ -81,7 +81,7 @@ class GarageAssistant:
             detected_objects.extend(objects_in_position)
         
         # Return to home
-        self.arm.Arm_serial_servo_write6(90, 105, 45, 145, 90, 90, 2000)
+        self.arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 2000)
         time.sleep(1)
         
         # Store detected objects

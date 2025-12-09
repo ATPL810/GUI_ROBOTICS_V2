@@ -22,10 +22,12 @@ def grab_point_G(arm):
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 125, 1000)
+    arm.Arm_serial_servo_write6(150, 40, 55, 45, 90, 126, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 124, 1000)
+    arm.Arm_serial_servo_write6(150, 30, 55, 45, 90, 125, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(150,30,55,45,90,36, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 80, 1000)
+    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 20, 1000)
     print("Grab Point G completed")

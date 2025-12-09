@@ -47,7 +47,7 @@ print("📦 Loading YOLO11 with EXTREME optimizations...")
 
 try:
     # Load YOLO11s model (small version)
-    model = YOLO('best_2s.pt')  # Make sure this is YOLO11s model
+    model = YOLO('best_best.pt')  # Make sure this is YOLO11s model
     
     # Apply MASSIVE optimizations
     model.overrides['conf'] = 0.35      # Lower confidence = faster

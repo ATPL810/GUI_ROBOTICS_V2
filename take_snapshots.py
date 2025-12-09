@@ -356,10 +356,16 @@ class AutomaticSnapshotSystem:
         print("=" * 70)
     
     def create_output_directory(self):
-        """Create timestamped directory for saving snapshots"""
+        """Create timestamped directory for saving snapshots inside data/snapshots"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = f"robot_snapshots_{timestamp}"
+        # Define the full path, including the existing parent directory
+        output_dir = f"data/snapshots/robot_snapshots_{timestamp}"
+        
+        # os.makedirs will create the full path.
+        # If 'data/snapshots' already exists, it will simply create the new timestamped folder inside it.
+        # If it doesn't exist, it will create the whole structure.
         os.makedirs(output_dir, exist_ok=True)
+        
         return output_dir
     
     def wait_for_stabilization(self, seconds=3, position_name=""):

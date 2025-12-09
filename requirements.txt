@@ -6,3 +6,4 @@ Pillow
 numpy
 Arm_Lib
 pyserial 
+tkinter

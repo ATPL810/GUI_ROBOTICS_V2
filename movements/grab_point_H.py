@@ -6,26 +6,31 @@ def grab_point_H(arm):
     
     # move to pos Before grabbing
     time.sleep(3)
-    arm.Arm_serial_servo_write6(0, 23, 90, 2, 40, 62, 1000)
+    arm.Arm_serial_servo_write6(1, 105, 45, -2, 89, 20, 1000)
     time.sleep(2)   
-    arm.Arm_serial_servo_write6(-15, 19, 90, 6, 40, 45, 1000)
-    
+    arm.Arm_serial_servo_write6(-10, 71, 39, 2, 88, 20, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(-10, 67, 39, 2, 10, 20, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(-10, 38, 49, 16, 10, 20, 1000)
     # grabbing
     time.sleep(2)
-    arm.Arm_serial_servo_write(6, 163, 1000)
+    arm.Arm_serial_servo_write(6, 159, 1000)
 
     # move to pos After grabbing object while holding it
     time.sleep(2)
-    arm.Arm_serial_servo_write6(50, 30, 107, 18, 89, 163, 1000)
+    arm.Arm_serial_servo_write6(5, 72, 59, 18, 10, 159, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, 163, 1000)
+    arm.Arm_serial_servo_write6(40, 90, 55, 60, 90, 160, 1000)
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 163, 1000)
+    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 160, 1000)
     time.sleep(2)
-    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 100, 1000)
+    arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 160, 1000)
+    time.sleep(2)
+    arm.Arm_serial_servo_write6(130,30,55,45,90,36, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 80, 1000)
+    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 20, 1000)
     print("Grab Point H completed")
