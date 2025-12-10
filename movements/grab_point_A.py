@@ -12,17 +12,17 @@ def grab_point_A(arm):
     
     # grabbing
     time.sleep(2)
-    arm.Arm_serial_servo_write(6, 177, 1000)
+    arm.Arm_serial_servo_write(6, 178, 1000)
 
     # move to pos After grabbing object while holding it
     time.sleep(2)
-    arm.Arm_serial_servo_write6(69, 58, 39, 59, 118, 177, 1000)
+    arm.Arm_serial_servo_write6(69, 58, 39, 59, 118, 178, 1000)
     time.sleep(2)
     arm.Arm_serial_servo_write6(120, 90, 55, 60, 90, 178, 1000)
     time.sleep(2)
     
     # tightening
-    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 177, 1000)
+    arm.Arm_serial_servo_write6(130, 40, 55, 45, 90, 179, 1000)
     time.sleep(2)
     arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 125, 1000)
 

@@ -6,7 +6,7 @@ Pillow
 numpy
 Arm_Lib
 pyserial 
-tkinter
+
 
 # for voice recognition
 # the offline model

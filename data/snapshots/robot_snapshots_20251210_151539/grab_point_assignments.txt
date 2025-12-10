@@ -1,0 +1,105 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-10 15:17:42
+Snapshot Session: 20251210_151539
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 6
+Points without Tools: 3
+Unique Tool Types: 4
+Total Tools (including duplicates): 6
+
+GRAB POINT TOOL ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION (Base: 90 degrees):
+----------------------------------------
+  Point A (75,260): BOLT - 90.4% confidence, 12px from tool center
+  Point B (243,280): No tool assigned
+  Point C (410,155): BOLT - 93.2% confidence, 49px from tool center
+  Point D (500,300): No tool assigned
+
+SECOND POSITION (Base: 40 degrees):
+----------------------------------------
+  Point E (260,240): HAMMER - 88.5% confidence, 68px from tool center
+  Point F (300,155): BOLT - 92.0% confidence, 27px from tool center
+  Point G (425,420): PLIER - 94.2% confidence, 129px from tool center
+
+THIRD POSITION (Base: 1 degree):
+----------------------------------------
+  Point H (160,300): MEASURING TAPE - 76.4% confidence, 93px from tool center
+  Point I (470,140): No tool assigned
+
+===========================================================================
+TOOL TO GRAB POINT MAPPING (BEST LOCATION):
+----------------------------------------
+  BOLT            → Point C (initial position)
+      Confidence: 93.2%, Distance: 49px
+      Also available at 2 other location(s)
+  HAMMER          → Point E (second position)
+      Confidence: 88.5%, Distance: 68px
+  MEASURING TAPE  → Point H (third position)
+      Confidence: 76.4%, Distance: 93px
+  PLIER           → Point G (second position)
+      Confidence: 94.2%, Distance: 129px
+
+===========================================================================
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (3 locations):
+  ⭐ Point C: 93.2% (initial position)
+    Point F: 92.0% (second position)
+    Point A: 90.4% (initial position)
+
+HAMMER (1 location):
+  ⭐ Point E: 88.5% (second position)
+
+MEASURING TAPE (1 location):
+  ⭐ Point H: 76.4% (third position)
+
+PLIER (1 location):
+  ⭐ Point G: 94.2% (second position)
+
+===========================================================================
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 3 locations:
+  ⭐ Point C (initial position)
+    Point F (second position)
+    Point A (initial position)
+  Will fetch from: Point C (highest confidence)
+
+When user requests 'hammer':
+  Will fetch from: Point E (Second Position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (Third Position)
+
+When user requests 'plier':
+  Will fetch from: Point G (Second Position)
+
+===========================================================================
+NOTES:
+----------------------------------------
+- Points B, D, I are empty and available for new tools
+- Duplicate tools found: BOLT (3)
+- All tools are within reasonable distance (<150px) from grab points
+- All assignments have good confidence (>70%)
+
+- Total unique tool types: 4
+- Total tools (including duplicates): 6
+
+DUPLICATE TOOL TRACKING:
+The garage assistant will:
+  1. Fetch from highest confidence location first
+  2. Track which locations have been fetched
+  3. Automatically select next best location
+  4. Show remaining inventory after each fetch
+
+===========================================================================
