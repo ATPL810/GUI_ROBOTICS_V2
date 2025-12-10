@@ -16,3 +16,6 @@ pyttsx3
 
 # For GUI
 PyQt5
+
+# For hand gestures
+mediapipe
