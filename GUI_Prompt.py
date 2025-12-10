@@ -909,43 +909,38 @@ class GrabSystem:
         script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
         
         if not os.path.exists(script_path):
-            self.log(f"❌ Grab script not found: {script_path}", "error")
+            print(f"ERROR: Grab script not found: {script_path}")
             return False
         
-        self.log(f"📄 Executing grab script: {script_path}", "info")
+        print(f"\nExecuting grab script for Point {grab_letter}...")
         
         try:
-            import importlib.util
-            import sys
+            # Import and execute the script
+            script_name = f"grab_point_{grab_letter}"
             
-            module_name = f"grab_point_{grab_letter}"
-            spec = importlib.util.spec_from_file_location(module_name, script_path)
+            # Dynamically import the module
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(script_name, script_path)
             module = importlib.util.module_from_spec(spec)
+            
+            # Add arm object to module
             module.arm = self.arm
+            
+            # Execute the module
             spec.loader.exec_module(module)
             
-            grab_function_name = f"grab_point_{grab_letter}"
-            if hasattr(module, grab_function_name):
-                grab_function = getattr(module, grab_function_name)
-                self.log(f"   Running {grab_function_name}()...", "info")
-                grab_function(self.arm)
-                self.log(f"   ✅ {grab_function_name}() completed", "success")
-                return True
+            # Call the main function if it exists
+            if hasattr(module, f"grab_point_{grab_letter}"):
+                grab_func = getattr(module, f"grab_point_{grab_letter}")
+                grab_func(self.arm)
             else:
-                for func_name in ["main", "grab", "execute_grab"]:
-                    if hasattr(module, func_name):
-                        grab_function = getattr(module, func_name)
-                        self.log(f"   Running {func_name}()...", "info")
-                        grab_function(self.arm)
-                        self.log(f"   ✅ {func_name}() completed", "success")
-                        return True
-                
-                self.log(f"❌ No grab function found in {script_path}", "error")
-                return False
+                print(f"Warning: No function grab_point_{grab_letter} found in script")
                 
         except Exception as e:
-            self.log(f"❌ Error executing grab script: {str(e)}", "error")
+            print(f"ERROR executing grab script: {e}")
             return False
+        
+        return True
     
     def verify_object_exists(self, tool_name):
         """Verify if the requested object was actually detected in the last scan"""
