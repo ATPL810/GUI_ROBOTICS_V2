@@ -905,42 +905,40 @@ class GrabSystem:
         return exists
     
     def execute_grab_script(self, grab_letter):
-        """Execute the grab script for a specific point"""
+        """Execute grab script - FIXED VERSION"""
         script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
         
         if not os.path.exists(script_path):
-            print(f"ERROR: Grab script not found: {script_path}")
+            self.log(f"❌ Script not found: {script_path}", "error")
             return False
         
-        print(f"\nExecuting grab script for Point {grab_letter}...")
+        self.log(f"📄 Executing grab script for Point {grab_letter}...", "info")
         
         try:
-            # Import and execute the script
-            script_name = f"grab_point_{grab_letter}"
+            # Read the script
+            with open(script_path, 'r') as f:
+                code = f.read()
             
-            # Dynamically import the module
-            import importlib.util
-            spec = importlib.util.spec_from_file_location(script_name, script_path)
-            module = importlib.util.module_from_spec(spec)
+            # IMPORTANT: The scripts expect 'arm' to be the Arm_Device object
+            # self.arm is RobotArmController, self.arm.arm is Arm_Device
+            arm_device = self.arm.arm
             
-            # Add arm object to module
-            module.arm = self.arm
+            # Create execution context
+            exec_globals = {
+                'arm': arm_device,  # The actual arm device
+                'time': time,
+                'print': print
+            }
             
-            # Execute the module
-            spec.loader.exec_module(module)
+            # Execute!
+            exec(code, exec_globals)
             
-            # Call the main function if it exists
-            if hasattr(module, f"grab_point_{grab_letter}"):
-                grab_func = getattr(module, f"grab_point_{grab_letter}")
-                grab_func(self.arm)
-            else:
-                print(f"Warning: No function grab_point_{grab_letter} found in script")
-                
+            self.log(f"✅ Grab script executed successfully for Point {grab_letter}", "success")
+            return True
+            
         except Exception as e:
-            print(f"ERROR executing grab script: {e}")
+            self.log(f"❌ Failed to execute grab script: {e}", "error")
             return False
-        
-        return True
     
     def verify_object_exists(self, tool_name):
         """Verify if the requested object was actually detected in the last scan"""
