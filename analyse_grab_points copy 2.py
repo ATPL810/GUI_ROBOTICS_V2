@@ -360,11 +360,17 @@ class GrabPointAnalyzer:
         assigned_points = sum(1 for a in self.grab_point_assignments.values() if a["class_name"] != "none")
         unassigned_points = total_points - assigned_points
         
-        # Count unique tools
+        # Count unique tools and total tools (including duplicates)
         unique_tools = set()
+        total_tools_count = 0
+        tool_counts = {}
+        
         for assignment in self.grab_point_assignments.values():
             if assignment["class_name"] != "none":
-                unique_tools.add(assignment["class_name"])
+                tool_name = assignment["class_name"]
+                unique_tools.add(tool_name)
+                total_tools_count += 1
+                tool_counts[tool_name] = tool_counts.get(tool_name, 0) + 1
         
         # Get snapshot timestamp from folder name
         snapshot_time = os.path.basename(self.snapshot_folder).replace("robot_snapshots_", "")
@@ -384,7 +390,8 @@ class GrabPointAnalyzer:
         report_lines.append(f"Total Grab Points Analyzed: {total_points}")
         report_lines.append(f"Points with Assigned Tools: {assigned_points}")
         report_lines.append(f"Points without Tools: {unassigned_points}")
-        report_lines.append(f"Unique Tools in Workshop: {len(unique_tools)}")
+        report_lines.append(f"Unique Tool Types: {len(unique_tools)}")
+        report_lines.append(f"Total Tools (including duplicates): {total_tools_count}")
         report_lines.append("")
         
         # Initial Position assignments
@@ -398,13 +405,13 @@ class GrabPointAnalyzer:
                 assignment = self.grab_point_assignments[point_id]
                 if assignment["class_name"] != "none":
                     report_lines.append(f"  Point {point_id} ({assignment['grab_point'][0]},{assignment['grab_point'][1]}): "
-                                      f"{assignment['class_name'].upper()} - "
-                                      f"{assignment['confidence']*100:.1f}% confidence, "
-                                      f"{assignment['distance']:.0f}px from tool center")
+                                    f"{assignment['class_name'].upper()} - "
+                                    f"{assignment['confidence']*100:.1f}% confidence, "
+                                    f"{assignment['distance']:.0f}px from tool center")
                 else:
                     report_lines.append(f"  Point {point_id} ({self.grab_points['initial_position'][point_id]['x']},"
-                                      f"{self.grab_points['initial_position'][point_id]['y']}): "
-                                      f"No tool assigned")
+                                    f"{self.grab_points['initial_position'][point_id]['y']}): "
+                                    f"No tool assigned")
         
         # Second Position assignments
         report_lines.append("\nSECOND POSITION (Base: 40 degrees):")
@@ -414,13 +421,13 @@ class GrabPointAnalyzer:
                 assignment = self.grab_point_assignments[point_id]
                 if assignment["class_name"] != "none":
                     report_lines.append(f"  Point {point_id} ({assignment['grab_point'][0]},{assignment['grab_point'][1]}): "
-                                      f"{assignment['class_name'].upper()} - "
-                                      f"{assignment['confidence']*100:.1f}% confidence, "
-                                      f"{assignment['distance']:.0f}px from tool center")
+                                    f"{assignment['class_name'].upper()} - "
+                                    f"{assignment['confidence']*100:.1f}% confidence, "
+                                    f"{assignment['distance']:.0f}px from tool center")
                 else:
                     report_lines.append(f"  Point {point_id} ({self.grab_points['second_position'][point_id]['x']},"
-                                      f"{self.grab_points['second_position'][point_id]['y']}): "
-                                      f"No tool assigned")
+                                    f"{self.grab_points['second_position'][point_id]['y']}): "
+                                    f"No tool assigned")
         
         # Third Position assignments
         report_lines.append("\nTHIRD POSITION (Base: 1 degree):")
@@ -430,36 +437,91 @@ class GrabPointAnalyzer:
                 assignment = self.grab_point_assignments[point_id]
                 if assignment["class_name"] != "none":
                     report_lines.append(f"  Point {point_id} ({assignment['grab_point'][0]},{assignment['grab_point'][1]}): "
-                                      f"{assignment['class_name'].upper()} - "
-                                      f"{assignment['confidence']*100:.1f}% confidence, "
-                                      f"{assignment['distance']:.0f}px from tool center")
+                                    f"{assignment['class_name'].upper()} - "
+                                    f"{assignment['confidence']*100:.1f}% confidence, "
+                                    f"{assignment['distance']:.0f}px from tool center")
                 else:
                     report_lines.append(f"  Point {point_id} ({self.grab_points['third_position'][point_id]['x']},"
-                                      f"{self.grab_points['third_position'][point_id]['y']}): "
-                                      f"No tool assigned")
+                                    f"{self.grab_points['third_position'][point_id]['y']}): "
+                                    f"No tool assigned")
         
-        # Tool mapping summary
+        # Tool mapping summary (BEST location for each tool)
         report_lines.append("\n" + "=" * 75)
-        report_lines.append("TOOL TO GRAB POINT MAPPING:")
+        report_lines.append("TOOL TO GRAB POINT MAPPING (BEST LOCATION):")
         report_lines.append("-" * 40)
         
         if self.tool_mapping:
             for tool_name, mapping in sorted(self.tool_mapping.items()):
-                report_lines.append(f"  {tool_name.upper():<15} → Point {mapping['grab_point']} "
-                                  f"({mapping['position'].replace('_', ' ')})")
+                best_loc = mapping["best_location"]
+                report_lines.append(f"  {tool_name.upper():<15} → Point {best_loc['grab_point']} "
+                                f"({best_loc['position'].replace('_', ' ')})")
+                report_lines.append(f"      Confidence: {best_loc['confidence']*100:.1f}%, "
+                                f"Distance: {best_loc['distance']:.0f}px")
+                if mapping["total_count"] > 1:
+                    report_lines.append(f"      Also available at {mapping['total_count']-1} other location(s)")
         else:
             report_lines.append("  No tools mapped")
         
-        # Robot action plan
+        # ALL tool locations including duplicates
         report_lines.append("\n" + "=" * 75)
-        report_lines.append("ROBOT ACTION PLAN:")
+        report_lines.append("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
+        report_lines.append("-" * 40)
+        
+        # Group all assignments by tool
+        all_tool_locations = {}
+        for point_id, assignment in self.grab_point_assignments.items():
+            if assignment["class_name"] != "none":
+                tool_name = assignment["class_name"]
+                if tool_name not in all_tool_locations:
+                    all_tool_locations[tool_name] = []
+                all_tool_locations[tool_name].append({
+                    "point": point_id,
+                    "confidence": assignment["confidence"],
+                    "distance": assignment["distance"],
+                    "position": self.get_position_from_point_id(point_id)
+                })
+        
+        # Sort each tool's locations by confidence (highest first)
+        for tool_name in all_tool_locations:
+            all_tool_locations[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
+        
+        # Show all locations for each tool
+        if all_tool_locations:
+            for tool_name, locations in sorted(all_tool_locations.items()):
+                if len(locations) > 1:
+                    report_lines.append(f"\n{tool_name.upper()} ({len(locations)} locations):")
+                    for i, loc in enumerate(locations, 1):
+                        star = "⭐ " if i == 1 else "  "
+                        report_lines.append(f"  {star}Point {loc['point']}: {loc['confidence']*100:.1f}% "
+                                        f"({loc['position'].replace('_', ' ')})")
+                else:
+                    report_lines.append(f"\n{tool_name.upper()} (1 location):")
+                    report_lines.append(f"  ⭐ Point {locations[0]['point']}: {locations[0]['confidence']*100:.1f}% "
+                                    f"({locations[0]['position'].replace('_', ' ')})")
+        else:
+            report_lines.append("  No tools found")
+        
+        # Robot action plan with duplicate handling
+        report_lines.append("\n" + "=" * 75)
+        report_lines.append("ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):")
         report_lines.append("-" * 40)
         
         if self.tool_mapping:
             for tool_name, mapping in sorted(self.tool_mapping.items()):
-                position_desc = mapping["position"].replace("_", " ").title()
-                report_lines.append(f"  When user requests '{tool_name.lower()}', robot will go to: "
-                                  f"Point {mapping['grab_point']} ({position_desc})")
+                best_loc = mapping["best_location"]
+                position_desc = best_loc["position"].replace("_", " ").title()
+                
+                if mapping["total_count"] > 1:
+                    report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
+                    report_lines.append(f"  Available at {mapping['total_count']} locations:")
+                    for i, loc in enumerate(mapping["all_locations"], 1):
+                        star = "⭐ " if i == 1 else "  "
+                        report_lines.append(f"  {star}Point {loc['grab_point']} "
+                                        f"({loc['position'].replace('_', ' ')})")
+                    report_lines.append(f"  Will fetch from: Point {best_loc['grab_point']} (highest confidence)")
+                else:
+                    report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
+                    report_lines.append(f"  Will fetch from: Point {best_loc['grab_point']} ({position_desc})")
         else:
             report_lines.append("  No action plan available (no tools mapped)")
         
@@ -479,6 +541,17 @@ class GrabPointAnalyzer:
         else:
             report_lines.append("- All grab points have assigned tools")
         
+        # Check for duplicate tools
+        duplicate_tools = []
+        for tool_name, count in tool_counts.items():
+            if count > 1:
+                duplicate_tools.append(f"{tool_name.upper()} ({count})")
+        
+        if duplicate_tools:
+            report_lines.append(f"- Duplicate tools found: {', '.join(duplicate_tools)}")
+        else:
+            report_lines.append("- No duplicate tools (each tool type appears only once)")
+        
         # Check distances
         far_assignments = []
         for point_id, assignment in self.grab_point_assignments.items():
@@ -487,6 +560,7 @@ class GrabPointAnalyzer:
         
         if far_assignments:
             report_lines.append(f"- Some tools are far from grab points: {', '.join(far_assignments)}")
+            report_lines.append("  Consider adjusting grab point positions or moving tools closer")
         else:
             report_lines.append("- All tools are within reasonable distance (<150px) from grab points")
         
@@ -498,8 +572,21 @@ class GrabPointAnalyzer:
         
         if low_conf_assignments:
             report_lines.append(f"- Low confidence assignments: {', '.join(low_conf_assignments)}")
+            report_lines.append("  These tools might be misidentified or poorly visible")
         else:
             report_lines.append("- All assignments have good confidence (>70%)")
+        
+        # Tool tracking information
+        report_lines.append(f"\n- Total unique tool types: {len(unique_tools)}")
+        report_lines.append(f"- Total tools (including duplicates): {total_tools_count}")
+        
+        if duplicate_tools:
+            report_lines.append("\nDUPLICATE TOOL TRACKING:")
+            report_lines.append("The garage assistant will:")
+            report_lines.append("  1. Fetch from highest confidence location first")
+            report_lines.append("  2. Track which locations have been fetched")
+            report_lines.append("  3. Automatically select next best location")
+            report_lines.append("  4. Show remaining inventory after each fetch")
         
         report_lines.append("\n" + "=" * 75)
         
@@ -514,31 +601,6 @@ class GrabPointAnalyzer:
         simple_report_file = os.path.join(self.snapshot_folder, "grab_point_assignments.txt")
         with open(simple_report_file, 'w') as f:
             f.write('\n'.join(report_lines))
-            
-        # Add this after TOOL TO GRAB POINT MAPPING section:
-        report_lines.append("\n" + "=" * 75)
-        report_lines.append("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
-        report_lines.append("-" * 40)
-
-        # Group all assignments by tool
-        tool_assignments = {}
-        for point_id, assignment in self.grab_point_assignments.items():
-            if assignment["class_name"] != "none":
-                tool_name = assignment["class_name"]
-                if tool_name not in tool_assignments:
-                    tool_assignments[tool_name] = []
-                tool_assignments[tool_name].append({
-                    "point": point_id,
-                    "confidence": assignment["confidence"],
-                    "distance": assignment["distance"]
-                })
-
-        # Show all locations for each tool
-        for tool_name, locations in sorted(tool_assignments.items()):
-            if len(locations) > 1:
-                report_lines.append(f"\n{tool_name.upper()} ({len(locations)} locations):")
-                for loc in sorted(locations, key=lambda x: x["confidence"], reverse=True):
-                    report_lines.append(f"  • Point {loc['point']}: {loc['confidence']*100:.1f}%")
         
         return report_file
     
@@ -560,9 +622,12 @@ class GrabPointAnalyzer:
         print(f"\nTOOL MAPPING:")
         if self.tool_mapping:
             for tool_name, mapping in self.tool_mapping.items():
-                print(f"  {tool_name}: Point {mapping['grab_point']} "
-                      f"(Confidence: {mapping['confidence']*100:.1f}%, "
-                      f"Distance: {mapping['distance']:.0f}px)")
+                best_loc = mapping["best_location"]
+                print(f"  {tool_name}: Point {best_loc['grab_point']} "
+                    f"(Confidence: {best_loc['confidence']*100:.1f}%, "
+                    f"Distance: {best_loc['distance']:.0f}px)")
+                if mapping["total_count"] > 1:
+                    print(f"    Also available at {mapping['total_count']-1} other location(s)")
         else:
             print("  No tools mapped")
         
