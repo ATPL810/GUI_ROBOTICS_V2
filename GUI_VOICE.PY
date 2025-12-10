@@ -11,10 +11,10 @@ from pathlib import Path
 from ultralytics import YOLO
 from Arm_Lib import Arm_Device
 
-# PyQt5 Imports
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+# Tkinter imports
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox, filedialog
+from PIL import Image, ImageTk
 
 # Voice recognition imports
 import pyaudio
@@ -24,19 +24,17 @@ from vosk import Model, KaldiRecognizer
 # ============================================
 # VOICE RECOGNITION SYSTEM
 # ============================================
-class VoiceRecognitionSystem(QThread):
-    command_received = pyqtSignal(str)
-    
-    def __init__(self, log_callback=None, parent=None):
-        super().__init__(parent)
+class VoiceRecognitionSystem:
+    def __init__(self, log_callback=None):
         self.log_callback = log_callback
         self.running = False
         self.voice_enabled = False
         self.is_speaking = False
         self.command_queue = []
         self.last_command_time = 0
+        self.command_callback = None
         
-        # Tools dictionary (matching your tools)
+        # Tools dictionary
         self.tools = {
             "screwdriver": ["screwdriver", "screw", "driver", "screwdriv", "skrewdriver"],
             "bolt": ["bolt", "bold", "board", "boat", "bult", "bolte", "bohlt"],
@@ -63,10 +61,12 @@ class VoiceRecognitionSystem(QThread):
         else:
             print(f"[VOICE {level.upper()}] {message}")
     
+    def set_command_callback(self, callback):
+        self.command_callback = callback
+    
     def initialize_voice(self):
         """Initialize voice recognition system"""
         try:
-            # Load Vosk model
             model_path = "./vosk-model-small-en-us-0.15"
             if not os.path.exists(model_path):
                 self.log(f"Vosk model not found at {model_path}", "error")
@@ -75,15 +75,13 @@ class VoiceRecognitionSystem(QThread):
             self.log("Loading Vosk model...", "info")
             self.model = Model(model_path)
             
-            # Initialize PyAudio
             self.p = pyaudio.PyAudio()
             self.stream = self.p.open(
                 format=pyaudio.paInt16,
                 channels=1,
                 rate=16000,
                 input=True,
-                frames_per_buffer=8000,
-                stream_callback=self.audio_callback if hasattr(self, 'audio_callback') else None
+                frames_per_buffer=8000
             )
             
             self.recognizer = KaldiRecognizer(self.model, 16000)
@@ -115,13 +113,11 @@ class VoiceRecognitionSystem(QThread):
         """Find which tool was mentioned"""
         text_lower = text.lower()
         
-        # Check each tool's keywords
         for tool, keywords in self.tools.items():
             for keyword in keywords:
                 if keyword in text_lower:
                     return tool
         
-        # Check for similar words (first 3 letters)
         words = text_lower.split()
         for word in words:
             if len(word) >= 3:
@@ -133,22 +129,19 @@ class VoiceRecognitionSystem(QThread):
         return None
     
     def process_voice_command(self, text):
-        """Process a voice command and emit signal for fetching"""
+        """Process a voice command"""
         self.log(f"Voice command: '{text}'", "info")
         
         text_lower = text.lower()
         
-        # Check for greeting
         if any(greet in text_lower for greet in ["hello", "hi", "hey", "greetings"]):
             self.speak("Hello! I'm your garage assistant. What tool would you like me to fetch?")
             return None
         
-        # Check for help
         if any(word in text_lower for word in ["help", "what can you do", "instructions"]):
             self.speak("I can fetch tools for you. Just say 'get me' followed by the tool name. Try 'get me the hammer' or 'fetch the screwdriver'.")
             return None
         
-        # Check for tool request
         tool = self.find_tool(text_lower)
         
         if tool:
@@ -156,18 +149,13 @@ class VoiceRecognitionSystem(QThread):
             has_command = any(cmd in text_lower for cmd in command_words)
             
             if has_command:
-                # Speak fetching message
                 fetching_msg = f"Fetching the {tool} for you!"
                 self.speak(fetching_msg)
-                
-                # Return the tool name for fetching
                 return tool
             else:
-                # Tool mentioned but no command
                 self.speak(f"I heard '{tool}'. To get it, say 'get me the {tool}'.")
                 return None
         
-        # No tool found
         self.speak("I didn't understand. Try saying: 'get me the wrench', 'fetch the hammer', or 'I need a screwdriver'.")
         return None
     
@@ -180,19 +168,15 @@ class VoiceRecognitionSystem(QThread):
             return
         
         self.log("🔊 Voice recognition started", "success")
-        
-        # Give initial welcome message
         welcome_msg = "Voice recognition enabled. You can now speak commands."
         self.speak(welcome_msg)
         
         while self.running and self.voice_enabled:
             try:
-                # Don't process audio while speaking
                 if self.is_speaking:
                     time.sleep(0.1)
                     continue
                 
-                # Read audio data
                 data = self.stream.read(4000, exception_on_overflow=False)
                 
                 if self.recognizer.AcceptWaveform(data):
@@ -201,16 +185,12 @@ class VoiceRecognitionSystem(QThread):
                     
                     if text and len(text) > 2:
                         current_time = time.time()
-                        # Debounce: ignore if too soon after last command
                         if current_time - self.last_command_time > 1.5:
-                            # Process the command
                             tool = self.process_voice_command(text)
-                            if tool:
-                                # Emit signal with tool name for fetching
-                                self.command_received.emit(tool)
+                            if tool and self.command_callback:
+                                self.command_callback(tool)
                             self.last_command_time = current_time
                 
-                # Small sleep to prevent high CPU usage
                 time.sleep(0.01)
                 
             except Exception as e:
@@ -232,11 +212,10 @@ class VoiceRecognitionSystem(QThread):
         self.log("Voice recognition stopped", "info")
 
 # ============================================
-# ROBOT ARM CONTROLLER (unchanged)
+# ROBOT ARM CONTROLLER
 # ============================================
 class RobotArmController:
     def __init__(self, log_callback=None):
-        """Initialize arm with exact specified angles"""
         self.log_callback = log_callback
         self.log("Initializing robot arm...")
         
@@ -244,7 +223,6 @@ class RobotArmController:
             self.arm = Arm_Device()
             time.sleep(2)
             
-            # Servo mapping
             self.SERVO_BASE = 1
             self.SERVO_SHOULDER = 2  
             self.SERVO_ELBOW = 3
@@ -252,7 +230,6 @@ class RobotArmController:
             self.SERVO_WRIST_ROT = 5
             self.SERVO_GRIPPER = 6
             
-            # Positions
             self.INITIAL_POSITION = {
                 self.SERVO_BASE: 90,
                 self.SERVO_SHOULDER: 105,
@@ -346,14 +323,12 @@ class RobotArmController:
         self.log("✅ At home position")
 
 # ============================================
-# CAMERA SYSTEM (unchanged)
+# CAMERA SYSTEM
 # ============================================
-class CameraSystem(QThread):
-    frame_ready = pyqtSignal(np.ndarray)
-    
-    def __init__(self, log_callback=None):
-        super().__init__()
+class CameraSystem:
+    def __init__(self, log_callback=None, frame_callback=None):
         self.log_callback = log_callback
+        self.frame_callback = frame_callback
         self.cap = None
         self.running = False
         
@@ -383,6 +358,12 @@ class CameraSystem(QThread):
         
         raise Exception("No camera found!")
     
+    def start(self):
+        """Start camera thread"""
+        self.running = True
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
+    
     def run(self):
         self.running = True
         try:
@@ -392,12 +373,12 @@ class CameraSystem(QThread):
             while self.running and self.cap.isOpened():
                 ret, frame = self.cap.read()
                 if ret:
-                    # Mirror the frame
                     frame = cv2.flip(frame, 1)
-                    self.frame_ready.emit(frame)
+                    if self.frame_callback:
+                        self.frame_callback(frame)
                 else:
                     break
-                time.sleep(0.03)  # ~30 FPS
+                time.sleep(0.03)
                 
         except Exception as e:
             self.log(f"Camera error: {e}", "error")
@@ -411,7 +392,7 @@ class CameraSystem(QThread):
         self.log("Camera stopped")
 
 # ============================================
-# SNAPSHOT SYSTEM (unchanged)
+# SNAPSHOT SYSTEM
 # ============================================
 class SnapshotSystem:
     def __init__(self, arm_controller, camera, log_callback=None):
@@ -422,7 +403,6 @@ class SnapshotSystem:
         self.output_dir = None
         self.all_snapshots = []
         
-        # Tool classes
         self.TOOL_CLASSES = ['Bolt', 'Hammer', 'Measuring Tape', 'Plier', 'Screwdriver', 'Wrench']
         self.TOOL_COLORS = [
             (0, 255, 0), (0, 0, 255), (255, 0, 0),
@@ -466,7 +446,6 @@ class SnapshotSystem:
     def capture_frame(self):
         """Capture a single frame from camera"""
         if self.camera.cap and self.camera.cap.isOpened():
-            # Clear buffer
             for _ in range(3):
                 self.camera.cap.read()
                 time.sleep(0.1)
@@ -538,29 +517,24 @@ class SnapshotSystem:
         self.log(f"Output directory: {self.output_dir}")
         
         try:
-            # Step 1: Initial Position
             self.log("\n🔹 STEP 1: INITIAL POSITION", "info")
             self.wait_for_stabilization(3, "Initial Position")
             snapshot1 = self.capture_and_save("initial_position", self.arm.INITIAL_POSITION[self.arm.SERVO_BASE])
             
-            # Step 2: Second Position
             self.log("\n🔹 STEP 2: MOVING TO SECOND POSITION", "info")
             self.arm.go_to_second_position()
             self.wait_for_stabilization(3, "Second Position")
             snapshot2 = self.capture_and_save("second_position", self.arm.SECOND_POSITION[self.arm.SERVO_BASE])
             
-            # Step 3: Third Position
             self.log("\n🔹 STEP 3: MOVING TO THIRD POSITION", "info")
             self.arm.go_to_third_position()
             self.wait_for_stabilization(3, "Third Position")
             snapshot3 = self.capture_and_save("third_position", self.arm.THIRD_POSITION[self.arm.SERVO_BASE])
             
-            # Step 4: Return to Initial
             self.log("\n🔹 STEP 4: RETURNING TO INITIAL POSITION", "info")
             time.sleep(3)
             self.arm.go_to_initial_position()
             
-            # Step 5: Finalize
             self.save_summary_report()
             
             self.log("✅ Automatic snapshot sequence COMPLETE!", "success")
@@ -600,13 +574,11 @@ class SnapshotSystem:
         else:
             self.log("No objects detected", "warning")
         
-        # Annotate and save frame
         annotated_frame = self.annotate_frame(frame, detections, position_name, base_angle)
         filename = f"{self.output_dir}/{position_name}.jpg"
         cv2.imwrite(filename, annotated_frame)
         self.log(f"Saved snapshot: {filename}")
         
-        # Save detection data
         self.save_detection_data(position_name, detections, filename, base_angle)
         
         snapshot_info = {
@@ -614,7 +586,7 @@ class SnapshotSystem:
             'base_angle': base_angle,
             'filename': filename,
             'detections': detections,
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            'timestamp': datetime.now().strftime("%Y-%m-d %H:%M:%S")
         }
         self.all_snapshots.append(snapshot_info)
         
@@ -646,7 +618,6 @@ class SnapshotSystem:
                        (x1, y1 - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
-        # Add position info
         position_text = f"Position: {position_name} (Base: {base_angle}°)"
         cv2.putText(annotated, position_text,
                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
@@ -715,7 +686,7 @@ class SnapshotSystem:
         self.log(f"Saved summary report: {summary_filename}")
 
 # ============================================
-# ANALYSIS SYSTEM (unchanged)
+# ANALYSIS SYSTEM
 # ============================================
 class AnalysisSystem:
     def __init__(self, log_callback=None):
@@ -1032,7 +1003,7 @@ class AnalysisSystem:
         return report_file
 
 # ============================================
-# GRAB SYSTEM WITH OBJECT VERIFICATION (unchanged)
+# GRAB SYSTEM WITH OBJECT VERIFICATION
 # ============================================
 class GrabSystem:
     def __init__(self, arm_controller, snapshot_system, camera_system, log_callback=None):
@@ -1044,7 +1015,7 @@ class GrabSystem:
         self.master_report_path = None
         
         self.grab_scripts_dir = "movements"
-        self.available_tools = []  # List of tool names that were actually detected
+        self.available_tools = []
     
     def log(self, message, level="info"):
         if self.log_callback:
@@ -1176,7 +1147,7 @@ class GrabSystem:
         self.log(f"❌ Verification failed: {tool_name} was not detected in last scan", "error")
         return False
     
-    def fetch_tool(self, tool_name):
+    def fetch_tool(self, tool_name, parent_window):
         """Fetch a specific tool with verification"""
         tool_name_lower = tool_name.lower().strip()
         
@@ -1184,21 +1155,19 @@ class GrabSystem:
         self.log(f"🤖 FETCH REQUEST: {tool_name.upper()}", "system")
         self.log(f"{'='*60}", "system")
         
-        # Step 1: Check if tool is in mapping
         if tool_name_lower not in self.tool_mapping:
             self.log(f"❌ Tool '{tool_name}' not found in tool mapping!", "error")
             self.show_available_tools()
             return False
         
-        # Step 2: Verify object was actually detected
         self.log("🔍 Verifying object detection...", "info")
         if not self.verify_object_exists(tool_name):
             self.log(f"⚠️ WARNING: {tool_name} was not detected in the last scan!", "warning")
             self.log("The tool may have been moved or is not in the workspace.", "warning")
             
-            # Ask user for confirmation
-            reply = self.ask_user_confirmation(
-                f"⚠️ {tool_name.upper()} was not detected in last scan!\n"
+            reply = messagebox.askyesno(
+                "⚠️ Warning",
+                f"{tool_name.upper()} was not detected in last scan!\n"
                 f"Do you still want to attempt fetching?"
             )
             
@@ -1206,22 +1175,19 @@ class GrabSystem:
                 self.log("Fetch cancelled by user.", "info")
                 return False
         
-        # Step 3: Get grab point
         grab_letter = self.tool_mapping[tool_name_lower]
         self.log(f"📍 Tool location: Point {grab_letter}", "success")
         
-        # Step 4: Confirm with user
         self.log(f"\n📋 FETCH CONFIRMATION:", "info")
         self.log(f"   Tool: {tool_name.upper()}", "info")
         self.log(f"   Location: Point {grab_letter}", "info")
         self.log(f"   Arm will move to position and attempt to grab.", "info")
         
-        reply = self.ask_user_confirmation(f"Proceed with fetching {tool_name.upper()}?")
+        reply = messagebox.askyesno("Fetch Confirmation", f"Proceed with fetching {tool_name.upper()}?")
         if not reply:
             self.log("Fetch cancelled by user.", "info")
             return False
         
-        # Step 5: Execute fetch sequence
         self.log("\n🚀 Starting fetch sequence...", "success")
         success = self.execute_fetch_sequence(grab_letter, tool_name)
         
@@ -1231,12 +1197,6 @@ class GrabSystem:
         else:
             self.log(f"\n❌ FAILED to fetch {tool_name.upper()}", "error")
             return False
-    
-    def ask_user_confirmation(self, message):
-        """Ask user for confirmation (for GUI, we'll show in status)"""
-        self.log(f"{message} [Waiting for user confirmation]", "warning")
-        # In the GUI, this will trigger a dialog box
-        return True  # Return True for now, GUI will handle this
     
     def show_available_tools(self):
         """Show available tools from mapping"""
@@ -1250,7 +1210,6 @@ class GrabSystem:
     def execute_fetch_sequence(self, grab_letter, tool_name):
         """Execute the fetch sequence"""
         try:
-            # Determine which position to go to
             if grab_letter in ["A", "B", "C", "D"]:
                 self.log("Moving to initial position...", "info")
                 self.arm.go_to_initial_position()
@@ -1266,11 +1225,9 @@ class GrabSystem:
             
             time.sleep(1)
             
-            # Simulate grabbing (in real implementation, run grab script)
             self.log(f"Attempting to grab at Point {grab_letter}...", "info")
             time.sleep(2)
             
-            # Return to home
             self.log("Returning to home position...", "info")
             self.arm.go_to_home()
             
@@ -1278,7 +1235,6 @@ class GrabSystem:
             
         except Exception as e:
             self.log(f"Error during fetch sequence: {e}", "error")
-            # Try to return to home on error
             try:
                 self.arm.go_to_home()
             except:
@@ -1286,268 +1242,150 @@ class GrabSystem:
             return False
 
 # ============================================
-# TOOL PROMPT DIALOG (unchanged)
+# TOOL PROMPT DIALOG (Tkinter)
 # ============================================
-class ToolPromptDialog(QDialog):
-    def __init__(self, tool_mapping, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("🤖 Fetch Tool")
-        self.setGeometry(200, 200, 400, 300)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #1e1e2e;
-            }
-            QLabel {
-                color: #cdd6f4;
-                font-size: 14px;
-            }
-            QLineEdit {
-                background-color: #313244;
-                color: #cdd6f4;
-                border: 2px solid #45475a;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #585b70;
-                color: #cdd6f4;
-                border: 2px solid #89b4fa;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #89b4fa;
-                color: #1e1e2e;
-            }
-            QListWidget {
-                background-color: #313244;
-                color: #cdd6f4;
-                border: 2px solid #45475a;
-                border-radius: 5px;
-                font-size: 14px;
-            }
-        """)
-        
+class ToolPromptDialog:
+    def __init__(self, parent, tool_mapping):
+        self.parent = parent
         self.tool_mapping = tool_mapping
         self.selected_tool = None
+        
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("🤖 Fetch Tool")
+        self.dialog.geometry("400x500")
+        self.dialog.configure(bg="#1e1e2e")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
         
         self.init_ui()
     
     def init_ui(self):
-        layout = QVBoxLayout()
-        
         # Title
-        title_label = QLabel("Select or Type Tool Name:")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #89b4fa;")
-        layout.addWidget(title_label)
+        title_label = tk.Label(
+            self.dialog,
+            text="Select or Type Tool Name:",
+            font=("Arial", 16, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e"
+        )
+        title_label.pack(pady=10)
         
         # Available tools list
-        list_label = QLabel("Available Tools:")
-        layout.addWidget(list_label)
+        list_label = tk.Label(
+            self.dialog,
+            text="Available Tools:",
+            font=("Arial", 12),
+            fg="#cdd6f4",
+            bg="#1e1e2e"
+        )
+        list_label.pack(anchor="w", padx=20)
         
-        self.tools_list = QListWidget()
+        # Listbox for tools
+        self.tools_listbox = tk.Listbox(
+            self.dialog,
+            bg="#313244",
+            fg="#cdd6f4",
+            selectbackground="#89b4fa",
+            selectforeground="#1e1e2e",
+            font=("Arial", 12),
+            height=8
+        )
+        self.tools_listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=(5, 10))
+        
         for tool_name in sorted(self.tool_mapping.keys()):
-            item = QListWidgetItem(tool_name.upper())
-            item.setData(Qt.UserRole, tool_name)
-            self.tools_list.addItem(item)
+            self.tools_listbox.insert(tk.END, tool_name.upper())
         
-        self.tools_list.itemDoubleClicked.connect(self.select_tool_from_list)
-        self.tools_list.itemClicked.connect(self.select_tool_from_list)
-        layout.addWidget(self.tools_list)
+        self.tools_listbox.bind('<<ListboxSelect>>', self.on_list_select)
+        self.tools_listbox.bind('<Double-Button-1>', self.on_double_click)
         
         # Or type manually
-        type_label = QLabel("Or type tool name:")
-        layout.addWidget(type_label)
+        type_label = tk.Label(
+            self.dialog,
+            text="Or type tool name:",
+            font=("Arial", 12),
+            fg="#cdd6f4",
+            bg="#1e1e2e"
+        )
+        type_label.pack(anchor="w", padx=20)
         
-        self.tool_input = QLineEdit()
-        self.tool_input.setPlaceholderText("e.g., hammer, screwdriver, wrench")
-        layout.addWidget(self.tool_input)
+        self.tool_input = tk.Entry(
+            self.dialog,
+            bg="#313244",
+            fg="#cdd6f4",
+            insertbackground="#cdd6f4",
+            font=("Arial", 12),
+            width=30
+        )
+        self.tool_input.pack(padx=20, pady=(5, 20), fill=tk.X)
+        self.tool_input.bind('<KeyRelease>', self.check_input)
         
         # Buttons
-        button_layout = QHBoxLayout()
+        button_frame = tk.Frame(self.dialog, bg="#1e1e2e")
+        button_frame.pack(pady=(0, 20))
         
-        self.ok_button = QPushButton("✅ Fetch")
-        self.ok_button.clicked.connect(self.accept)
-        self.ok_button.setEnabled(False)
+        self.ok_button = tk.Button(
+            button_frame,
+            text="✅ Fetch",
+            command=self.on_ok,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 12, "bold"),
+            width=12,
+            state=tk.DISABLED
+        )
+        self.ok_button.pack(side=tk.LEFT, padx=10)
         
-        self.cancel_button = QPushButton("❌ Cancel")
-        self.cancel_button.clicked.connect(self.reject)
-        
-        button_layout.addWidget(self.ok_button)
-        button_layout.addWidget(self.cancel_button)
-        layout.addLayout(button_layout)
-        
-        # Connect signals
-        self.tool_input.textChanged.connect(self.check_input)
-        self.tools_list.itemSelectionChanged.connect(self.check_selection)
-        
-        self.setLayout(layout)
+        self.cancel_button = tk.Button(
+            button_frame,
+            text="❌ Cancel",
+            command=self.on_cancel,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 12, "bold"),
+            width=12
+        )
+        self.cancel_button.pack(side=tk.LEFT, padx=10)
     
-    def select_tool_from_list(self, item):
-        """Select tool from list"""
-        self.tool_input.setText(item.data(Qt.UserRole))
-        self.ok_button.setEnabled(True)
+    def on_list_select(self, event):
+        selection = self.tools_listbox.curselection()
+        if selection:
+            tool_name = self.tools_listbox.get(selection[0])
+            self.tool_input.delete(0, tk.END)
+            self.tool_input.insert(0, tool_name.lower())
+            self.ok_button.config(state=tk.NORMAL)
     
-    def check_input(self, text):
-        """Check if input is valid"""
-        if text.strip():
-            self.ok_button.setEnabled(True)
+    def on_double_click(self, event):
+        self.on_ok()
+    
+    def check_input(self, event):
+        if self.tool_input.get().strip():
+            self.ok_button.config(state=tk.NORMAL)
         else:
-            self.ok_button.setEnabled(False)
+            self.ok_button.config(state=tk.DISABLED)
     
-    def check_selection(self):
-        """Check if item is selected"""
-        if self.tools_list.currentItem():
-            self.ok_button.setEnabled(True)
-    
-    def get_selected_tool(self):
-        """Get the selected tool"""
-        return self.tool_input.text().strip().lower()
-    
-    def accept(self):
-        """Accept dialog"""
-        tool_name = self.get_selected_tool()
+    def on_ok(self):
+        tool_name = self.tool_input.get().strip().lower()
         if tool_name:
             self.selected_tool = tool_name
-            super().accept()
-
-# ============================================
-# CONFIRMATION DIALOG (unchanged)
-# ============================================
-class ConfirmationDialog(QDialog):
-    def __init__(self, message, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("⚠️ Confirmation Required")
-        self.setGeometry(300, 300, 400, 200)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #1e1e2e;
-            }
-            QLabel {
-                color: #cdd6f4;
-                font-size: 14px;
-                padding: 10px;
-            }
-            QPushButton {
-                background-color: #585b70;
-                color: #cdd6f4;
-                border: 2px solid #89b4fa;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #89b4fa;
-                color: #1e1e2e;
-            }
-        """)
-        
-        self.init_ui(message)
+            self.dialog.destroy()
     
-    def init_ui(self, message):
-        layout = QVBoxLayout()
-        
-        # Message
-        message_label = QLabel(message)
-        message_label.setWordWrap(True)
-        message_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(message_label)
-        
-        # Warning icon
-        warning_label = QLabel("⚠️")
-        warning_label.setAlignment(Qt.AlignCenter)
-        warning_label.setStyleSheet("font-size: 48px; color: #f9e2af;")
-        layout.addWidget(warning_label)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        
-        self.yes_button = QPushButton("✅ Yes, Continue")
-        self.yes_button.clicked.connect(self.accept)
-        
-        self.no_button = QPushButton("❌ No, Cancel")
-        self.no_button.clicked.connect(self.reject)
-        
-        button_layout.addWidget(self.yes_button)
-        button_layout.addWidget(self.no_button)
-        layout.addLayout(button_layout)
-        
-        self.setLayout(layout)
+    def on_cancel(self):
+        self.selected_tool = None
+        self.dialog.destroy()
+    
+    def show(self):
+        self.dialog.wait_window()
+        return self.selected_tool
 
 # ============================================
-# MAIN GUI WINDOW WITH VOICE RECOGNITION
+# MAIN GUI WINDOW (Tkinter)
 # ============================================
-class MainWindow(QMainWindow):
+class MainWindow:
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("🏗️ Garage Assistant Pro")
-        self.setGeometry(100, 100, 1100, 700)
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #1e1e2e;
-            }
-            QLabel {
-                color: #cdd6f4;
-            }
-            QPushButton {
-                background-color: #585b70;
-                color: #cdd6f4;
-                border: 2px solid #89b4fa;
-                border-radius: 5px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #89b4fa;
-                color: #1e1e2e;
-            }
-            QPushButton:disabled {
-                background-color: #313244;
-                color: #6c7086;
-                border: 2px solid #45475a;
-            }
-            QListWidget {
-                background-color: #313244;
-                color: #cdd6f4;
-                border: 2px solid #45475a;
-                border-radius: 5px;
-            }
-            QTextEdit {
-                background-color: #181825;
-                color: #a6adc8;
-                border: 2px solid #45475a;
-                border-radius: 5px;
-                font-family: 'Courier New', monospace;
-            }
-            QGroupBox {
-                color: #89b4fa;
-                border: 2px solid #89b4fa;
-                border-radius: 5px;
-                margin-top: 10px;
-                font-weight: bold;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-            QProgressBar {
-                border: 2px solid #45475a;
-                border-radius: 5px;
-                text-align: center;
-                color: #cdd6f4;
-            }
-            QProgressBar::chunk {
-                background-color: #89b4fa;
-                border-radius: 3px;
-            }
-        """)
+        self.root = tk.Tk()
+        self.root.title("🏗️ Garage Assistant Pro")
+        self.root.geometry("1100x700")
+        self.root.configure(bg="#1e1e2e")
         
         # System components
         self.arm_controller = None
@@ -1557,12 +1395,6 @@ class MainWindow(QMainWindow):
         self.grab_system = None
         self.voice_system = None
         
-        # Threads
-        self.camera_thread = None
-        self.scan_thread = None
-        self.fetch_thread = None
-        self.voice_thread = None
-        
         # Current state
         self.scanning = False
         self.fetching = False
@@ -1570,235 +1402,280 @@ class MainWindow(QMainWindow):
         self.tool_mapping = {}
         self.voice_enabled = False
         
+        # Camera display
+        self.current_frame = None
+        self.camera_image = None
+        
         # Initialize GUI
         self.init_ui()
         
         # Start systems
         self.initialize_systems()
+        
+        # Start periodic updates
+        self.update_camera()
+        self.root.after(100, self.periodic_update)
     
     def init_ui(self):
-        # Central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        # Main container
+        main_container = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, bg="#1e1e2e")
+        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Main layout
-        main_layout = QHBoxLayout()
-        central_widget.setLayout(main_layout)
+        # Left panel
+        left_panel = tk.Frame(main_container, bg="#1e1e2e")
+        main_container.add(left_panel, width=650)
         
-        # Left panel (Camera + Controls)
-        left_panel = QVBoxLayout()
+        # Right panel
+        right_panel = tk.Frame(main_container, bg="#1e1e2e")
+        main_container.add(right_panel, width=400)
+        
+        # ========== LEFT PANEL ==========
         
         # Camera display
-        camera_group = QGroupBox("🎥 Live Camera Feed")
-        camera_layout = QVBoxLayout()
+        camera_frame = tk.LabelFrame(
+            left_panel,
+            text="🎥 Live Camera Feed",
+            font=("Arial", 12, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e",
+            relief=tk.RAISED,
+            borderwidth=2
+        )
+        camera_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
-        self.camera_label = QLabel()
-        self.camera_label.setAlignment(Qt.AlignCenter)
-        self.camera_label.setMinimumSize(640, 480)
-        self.camera_label.setStyleSheet("""
-            QLabel {
-                background-color: #000000;
-                border: 3px solid #89b4fa;
-                border-radius: 5px;
-            }
-        """)
-        
-        camera_layout.addWidget(self.camera_label)
-        camera_group.setLayout(camera_layout)
-        left_panel.addWidget(camera_group)
+        self.camera_label = tk.Label(
+            camera_frame,
+            bg="black",
+            relief=tk.SUNKEN,
+            borderwidth=3
+        )
+        self.camera_label.pack(padx=10, pady=10)
         
         # Control buttons
-        control_group = QGroupBox("⚙️ System Controls")
-        control_layout = QGridLayout()
+        control_frame = tk.LabelFrame(
+            left_panel,
+            text="⚙️ System Controls",
+            font=("Arial", 12, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e",
+            relief=tk.RAISED,
+            borderwidth=2
+        )
+        control_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Voice toggle button (NEW)
-        self.voice_button = QPushButton("🎤 Enable Voice")
-        self.voice_button.clicked.connect(self.toggle_voice_recognition)
-        self.voice_button.setStyleSheet("""
-            QPushButton {
-                background-color: #74c7ec;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #89dceb;
-            }
-        """)
+        # Voice button
+        self.voice_button = tk.Button(
+            control_frame,
+            text="🎤 Enable Voice",
+            command=self.toggle_voice_recognition,
+            bg="#74c7ec",
+            fg="#1e1e2e",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.voice_button.grid(row=0, column=0, padx=5, pady=5)
         
         # Scan button
-        self.scan_button = QPushButton("🔍 Start Scan & Analysis")
-        self.scan_button.clicked.connect(self.start_scan)
-        self.scan_button.setStyleSheet("""
-            QPushButton {
-                background-color: #a6e3a1;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #94e2d5;
-            }
-        """)
+        self.scan_button = tk.Button(
+            control_frame,
+            text="🔍 Start Scan & Analysis",
+            command=self.start_scan,
+            bg="#a6e3a1",
+            fg="#1e1e2e",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.scan_button.grid(row=0, column=1, padx=5, pady=5)
         
         # Stop button
-        self.stop_button = QPushButton("🛑 Emergency Stop")
-        self.stop_button.clicked.connect(self.emergency_stop)
-        self.stop_button.setStyleSheet("""
-            QPushButton {
-                background-color: #f38ba8;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #f5c2e7;
-            }
-        """)
+        self.stop_button = tk.Button(
+            control_frame,
+            text="🛑 Emergency Stop",
+            command=self.emergency_stop,
+            bg="#f38ba8",
+            fg="#1e1e2e",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.stop_button.grid(row=1, column=0, padx=5, pady=5)
         
         # Home button
-        self.home_button = QPushButton("🏠 Go Home")
-        self.home_button.clicked.connect(self.go_home)
+        self.home_button = tk.Button(
+            control_frame,
+            text="🏠 Go Home",
+            command=self.go_home,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.home_button.grid(row=1, column=1, padx=5, pady=5)
         
         # Fetch button
-        self.fetch_prompt_button = QPushButton("🤖 Fetch Tool...")
-        self.fetch_prompt_button.clicked.connect(self.prompt_for_tool)
-        self.fetch_prompt_button.setStyleSheet("""
-            QPushButton {
-                background-color: #cba6f7;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #f5c2e7;
-            }
-        """)
+        self.fetch_prompt_button = tk.Button(
+            control_frame,
+            text="🤖 Fetch Tool...",
+            command=self.prompt_for_tool,
+            bg="#cba6f7",
+            fg="#1e1e2e",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.fetch_prompt_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
         
-        # Status label
-        self.status_label = QLabel("Status: Ready")
-        self.status_label.setStyleSheet("""
-            QLabel {
-                color: #a6e3a1;
-                font-weight: bold;
-                font-size: 14px;
-            }
-        """)
+        # Status labels
+        status_frame = tk.Frame(control_frame, bg="#1e1e2e")
+        status_frame.grid(row=3, column=0, columnspan=2, pady=(10, 5), sticky="ew")
         
-        # Voice status label (NEW)
-        self.voice_status_label = QLabel("Voice: Disabled")
-        self.voice_status_label.setStyleSheet("""
-            QLabel {
-                color: #74c7ec;
-                font-weight: bold;
-                font-size: 14px;
-            }
-        """)
+        self.status_label = tk.Label(
+            status_frame,
+            text="Status: Ready",
+            font=("Arial", 11, "bold"),
+            fg="#a6e3a1",
+            bg="#1e1e2e"
+        )
+        self.status_label.pack(side=tk.LEFT, padx=20)
+        
+        self.voice_status_label = tk.Label(
+            status_frame,
+            text="Voice: Disabled",
+            font=("Arial", 11, "bold"),
+            fg="#74c7ec",
+            bg="#1e1e2e"
+        )
+        self.voice_status_label.pack(side=tk.RIGHT, padx=20)
         
         # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        
-        # Add buttons to layout
-        control_layout.addWidget(self.voice_button, 0, 0)
-        control_layout.addWidget(self.scan_button, 0, 1)
-        control_layout.addWidget(self.stop_button, 1, 0)
-        control_layout.addWidget(self.home_button, 1, 1)
-        control_layout.addWidget(self.fetch_prompt_button, 2, 0, 1, 2)
-        control_layout.addWidget(self.status_label, 3, 0)
-        control_layout.addWidget(self.voice_status_label, 3, 1)
-        control_layout.addWidget(self.progress_bar, 4, 0, 1, 2)
-        control_group.setLayout(control_layout)
-        left_panel.addWidget(control_group)
+        self.progress_bar = ttk.Progressbar(
+            control_frame,
+            length=400,
+            mode='determinate'
+        )
+        self.progress_bar.grid(row=4, column=0, columnspan=2, padx=5, pady=(5, 10), sticky="ew")
         
         # Tools list
-        tools_group = QGroupBox("🛠 Mapped Tools")
-        tools_layout = QVBoxLayout()
+        tools_frame = tk.LabelFrame(
+            left_panel,
+            text="🛠 Mapped Tools",
+            font=("Arial", 12, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e",
+            relief=tk.RAISED,
+            borderwidth=2
+        )
+        tools_frame.pack(fill=tk.BOTH, expand=True)
         
-        self.tools_list = QListWidget()
-        self.tools_list.itemDoubleClicked.connect(self.fetch_selected_tool)
+        # Tools listbox
+        self.tools_listbox = tk.Listbox(
+            tools_frame,
+            bg="#313244",
+            fg="#cdd6f4",
+            selectbackground="#89b4fa",
+            selectforeground="#1e1e2e",
+            font=("Arial", 11)
+        )
+        self.tools_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.tools_listbox.bind('<Double-Button-1>', lambda e: self.fetch_selected_tool())
         
-        self.fetch_button = QPushButton("🤖 Fetch Selected Tool")
-        self.fetch_button.clicked.connect(self.fetch_selected_tool)
+        # Fetch selected button
+        self.fetch_button = tk.Button(
+            tools_frame,
+            text="🤖 Fetch Selected Tool",
+            command=self.fetch_selected_tool,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 11, "bold")
+        )
+        self.fetch_button.pack(pady=(0, 10))
         
-        tools_layout.addWidget(self.tools_list)
-        tools_layout.addWidget(self.fetch_button)
-        tools_group.setLayout(tools_layout)
-        left_panel.addWidget(tools_group)
+        # ========== RIGHT PANEL ==========
         
-        # Add left panel to main layout
-        main_layout.addLayout(left_panel)
+        # Logger
+        logger_frame = tk.LabelFrame(
+            right_panel,
+            text="📋 System Logger",
+            font=("Arial", 12, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e",
+            relief=tk.RAISED,
+            borderwidth=2
+        )
+        logger_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
-        # Right panel (Logger)
-        right_panel = QVBoxLayout()
+        # Text widget for logging
+        self.logger_text = scrolledtext.ScrolledText(
+            logger_frame,
+            bg="#181825",
+            fg="#a6adc8",
+            font=("Courier New", 10),
+            width=50,
+            height=25
+        )
+        self.logger_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        logger_group = QGroupBox("📋 System Logger")
-        logger_layout = QVBoxLayout()
-        
-        self.logger_text = QTextEdit()
-        self.logger_text.setReadOnly(True)
-        self.logger_text.setMinimumWidth(400)
-        
-        # Clear button
-        clear_button = QPushButton("🗑️ Clear Log")
-        clear_button.clicked.connect(self.clear_log)
-        
-        logger_layout.addWidget(self.logger_text)
-        logger_layout.addWidget(clear_button)
-        logger_group.setLayout(logger_layout)
-        right_panel.addWidget(logger_group)
+        # Clear log button
+        clear_button = tk.Button(
+            logger_frame,
+            text="🗑️ Clear Log",
+            command=self.clear_log,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 10, "bold")
+        )
+        clear_button.pack(pady=(0, 10))
         
         # System info
-        info_group = QGroupBox("ℹ️ System Information")
-        info_layout = QVBoxLayout()
-        
-        self.info_label = QLabel(
-            "Arm Status: Not connected\n"
-            "Camera Status: Not connected\n"
-            "Last Scan: None\n"
-            "Tools Mapped: 0\n"
-            "Last Fetch: None\n"
-            "Voice Status: Disabled"
+        info_frame = tk.LabelFrame(
+            right_panel,
+            text="ℹ️ System Information",
+            font=("Arial", 12, "bold"),
+            fg="#89b4fa",
+            bg="#1e1e2e",
+            relief=tk.RAISED,
+            borderwidth=2
         )
-        self.info_label.setStyleSheet("""
-            QLabel {
-                color: #cba6f7;
-                font-family: 'Monospace';
-            }
-        """)
+        info_frame.pack(fill=tk.X)
         
-        info_layout.addWidget(self.info_label)
-        info_group.setLayout(info_layout)
-        right_panel.addWidget(info_group)
-        
-        # Add right panel to main layout
-        main_layout.addLayout(right_panel)
+        self.info_label = tk.Label(
+            info_frame,
+            text="Arm Status: Not connected\n"
+                 "Camera Status: Not connected\n"
+                 "Last Scan: None\n"
+                 "Tools Mapped: 0\n"
+                 "Last Fetch: None\n"
+                 "Voice Status: Disabled",
+            font=("Monospace", 10),
+            fg="#cba6f7",
+            bg="#1e1e2e",
+            justify=tk.LEFT,
+            anchor="w"
+        )
+        self.info_label.pack(fill=tk.X, padx=10, pady=10)
     
     def initialize_systems(self):
         """Initialize all systems"""
         try:
             self.log("🚀 Initializing Garage Assistant Pro...", "system")
             
-            # Initialize arm
             self.log("🤖 Initializing robot arm...", "info")
             self.arm_controller = RobotArmController(log_callback=self.log)
             
-            # Initialize camera
             self.log("📷 Starting camera...", "info")
-            self.camera_system = CameraSystem(log_callback=self.log)
-            self.camera_system.frame_ready.connect(self.update_camera_frame)
-            self.camera_thread = QThread()
-            self.camera_system.moveToThread(self.camera_thread)
-            self.camera_thread.started.connect(self.camera_system.run)
-            self.camera_thread.start()
+            self.camera_system = CameraSystem(
+                log_callback=self.log,
+                frame_callback=self.update_camera_frame
+            )
+            self.camera_system.start()
             
-            # Initialize voice system
             self.log("🎤 Initializing voice recognition...", "info")
             self.voice_system = VoiceRecognitionSystem(log_callback=self.log)
-            self.voice_system.command_received.connect(self.handle_voice_command)
+            self.voice_system.set_command_callback(self.handle_voice_command)
             
-            # Initialize other systems
             self.snapshot_system = SnapshotSystem(self.arm_controller, self.camera_system, self.log)
             self.analysis_system = AnalysisSystem(self.log)
             self.grab_system = GrabSystem(self.arm_controller, self.snapshot_system, self.camera_system, self.log)
@@ -1808,6 +1685,71 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             self.log(f"❌ Failed to initialize systems: {e}", "error")
+    
+    def log(self, message, level="info"):
+        """Log message to logger and console"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Color coding
+        colors = {
+            "info": "#89b4fa",
+            "success": "#a6e3a1",
+            "warning": "#f9e2af",
+            "error": "#f38ba8",
+            "system": "#cba6f7"
+        }
+        
+        color = colors.get(level, "#cdd6f4")
+        formatted_message = f"[{timestamp}] {message}\n"
+        
+        self.logger_text.insert(tk.END, formatted_message)
+        self.logger_text.tag_add(level, f"end-{len(formatted_message)+1}c", "end")
+        self.logger_text.tag_config(level, foreground=color)
+        
+        # Auto-scroll to bottom
+        self.logger_text.see(tk.END)
+        
+        # Update status for important messages
+        if level == "error":
+            self.status_label.config(text=f"Status: Error - {message[:30]}...")
+        elif level == "success":
+            self.status_label.config(text=f"Status: {message[:40]}...")
+    
+    def update_camera_frame(self, frame):
+        """Update camera frame from camera thread"""
+        self.current_frame = frame
+    
+    def update_camera(self):
+        """Update camera display in GUI thread"""
+        if self.current_frame is not None:
+            try:
+                rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
+                h, w = rgb_image.shape[:2]
+                
+                # Resize to fit label
+                max_width = 620
+                max_height = 460
+                scale = min(max_width / w, max_height / h)
+                new_w = int(w * scale)
+                new_h = int(h * scale)
+                
+                resized = cv2.resize(rgb_image, (new_w, new_h))
+                
+                # Convert to PhotoImage
+                image = Image.fromarray(resized)
+                self.camera_image = ImageTk.PhotoImage(image)
+                
+                self.camera_label.config(image=self.camera_image)
+                
+            except Exception as e:
+                pass
+        
+        # Schedule next update
+        self.root.after(33, self.update_camera)  # ~30 FPS
+    
+    def periodic_update(self):
+        """Periodic updates for GUI"""
+        self.root.after(100, self.periodic_update)
     
     def toggle_voice_recognition(self):
         """Toggle voice recognition on/off"""
@@ -1826,26 +1768,15 @@ class MainWindow(QMainWindow):
         self.voice_enabled = True
         
         # Update UI
-        self.voice_button.setText("🔴 Disable Voice")
-        self.voice_button.setStyleSheet("""
-            QPushButton {
-                background-color: #f38ba8;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #f5c2e7;
-            }
-        """)
-        self.voice_status_label.setText("Voice: Listening...")
-        self.voice_status_label.setStyleSheet("""
-            QLabel {
-                color: #a6e3a1;
-                font-weight: bold;
-                font-size: 14px;
-            }
-        """)
+        self.voice_button.config(
+            text="🔴 Disable Voice",
+            bg="#f38ba8",
+            fg="#1e1e2e"
+        )
+        self.voice_status_label.config(
+            text="Voice: Listening...",
+            fg="#a6e3a1"
+        )
         
         # Start voice recognition in separate thread
         self.voice_system.voice_enabled = True
@@ -1862,26 +1793,15 @@ class MainWindow(QMainWindow):
         self.voice_enabled = False
         
         # Update UI
-        self.voice_button.setText("🎤 Enable Voice")
-        self.voice_button.setStyleSheet("""
-            QPushButton {
-                background-color: #74c7ec;
-                color: #1e1e2e;
-                font-size: 14px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #89dceb;
-            }
-        """)
-        self.voice_status_label.setText("Voice: Disabled")
-        self.voice_status_label.setStyleSheet("""
-            QLabel {
-                color: #74c7ec;
-                font-weight: bold;
-                font-size: 14px;
-            }
-        """)
+        self.voice_button.config(
+            text="🎤 Enable Voice",
+            bg="#74c7ec",
+            fg="#1e1e2e"
+        )
+        self.voice_status_label.config(
+            text="Voice: Disabled",
+            fg="#74c7ec"
+        )
         
         # Stop voice recognition
         if self.voice_system:
@@ -1895,7 +1815,6 @@ class MainWindow(QMainWindow):
         """Handle voice command received"""
         self.log(f"🎤 Voice command received: Fetch {tool_name}", "system")
         
-        # Check if we're already doing something
         if self.scanning:
             self.log("Cannot process voice command during scan!", "warning")
             return
@@ -1904,67 +1823,21 @@ class MainWindow(QMainWindow):
             self.log("Already fetching a tool!", "warning")
             return
         
-        # Start fetching the tool
-        self.start_fetch_tool(tool_name)
-    
-    def log(self, message, level="info"):
-        """Log message to logger and console"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # Color coding
-        colors = {
-            "info": "#89b4fa",
-            "success": "#a6e3a1",
-            "warning": "#f9e2af",
-            "error": "#f38ba8",
-            "system": "#cba6f7"
-        }
-        
-        color = colors.get(level, "#cdd6f4")
-        formatted_message = f'<font color="{color}">[{timestamp}] {message}</font>'
-        
-        self.logger_text.append(formatted_message)
-        
-        # Auto-scroll to bottom
-        scrollbar = self.logger_text.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-        
-        # Update status for important messages
-        if level == "error":
-            self.status_label.setText(f"Status: Error - {message[:30]}...")
-        elif level == "success":
-            self.status_label.setText(f"Status: {message[:40]}...")
-    
-    def update_camera_frame(self, frame):
-        """Update camera display with new frame"""
-        try:
-            # Convert BGR to RGB
-            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(qt_image)
-            scaled_pixmap = pixmap.scaled(self.camera_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            
-            self.camera_label.setPixmap(scaled_pixmap)
-            
-        except Exception as e:
-            pass
+        # Schedule fetch in main thread
+        self.root.after(0, lambda: self.start_fetch_tool(tool_name))
     
     def prompt_for_tool(self):
-        """Prompt user for which tool to fetch (text input)"""
+        """Prompt user for which tool to fetch"""
         if not self.tool_mapping:
             self.log("❌ No tool mapping available! Please run scan first.", "error")
             return
         
-        # Show tool selection dialog
-        dialog = ToolPromptDialog(self.tool_mapping, self)
-        if dialog.exec_() == QDialog.Accepted:
-            tool_name = dialog.get_selected_tool()
-            if tool_name:
-                self.log(f"User requested to fetch: {tool_name.upper()}", "system")
-                self.start_fetch_tool(tool_name)
+        dialog = ToolPromptDialog(self.root, self.tool_mapping)
+        tool_name = dialog.show()
+        
+        if tool_name:
+            self.log(f"User requested to fetch: {tool_name.upper()}", "system")
+            self.start_fetch_tool(tool_name)
     
     def start_fetch_tool(self, tool_name):
         """Start fetching a tool"""
@@ -1973,10 +1846,10 @@ class MainWindow(QMainWindow):
             return
         
         self.fetching = True
-        self.fetch_prompt_button.setEnabled(False)
-        self.fetch_button.setEnabled(False)
-        self.voice_button.setEnabled(False)
-        self.status_label.setText(f"Status: Fetching {tool_name.upper()}...")
+        self.fetch_prompt_button.config(state=tk.DISABLED)
+        self.fetch_button.config(state=tk.DISABLED)
+        self.voice_button.config(state=tk.DISABLED)
+        self.status_label.config(text=f"Status: Fetching {tool_name.upper()}...")
         
         # Run in separate thread
         self.fetch_thread = threading.Thread(target=self.run_fetch_sequence, args=(tool_name,))
@@ -1986,18 +1859,18 @@ class MainWindow(QMainWindow):
     def run_fetch_sequence(self, tool_name):
         """Run the fetch sequence"""
         try:
-            # Load mapping if not loaded
             if not self.tool_mapping:
                 self.grab_system.load_mapping()
                 self.tool_mapping = self.grab_system.tool_mapping
             
-            # Fetch the tool
-            success = self.grab_system.fetch_tool(tool_name)
+            success = self.grab_system.fetch_tool(tool_name, self.root)
             
             if success:
                 self.log(f"✅ Successfully fetched {tool_name.upper()}!", "success")
-                self.update_info(f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
-                               f"Last Tool: {tool_name.upper()}")
+                self.update_info(
+                    f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
+                    f"Last Tool: {tool_name.upper()}"
+                )
             else:
                 self.log(f"❌ Failed to fetch {tool_name.upper()}", "error")
                 
@@ -2006,19 +1879,23 @@ class MainWindow(QMainWindow):
         
         finally:
             self.fetching = False
-            self.fetch_prompt_button.setEnabled(True)
-            self.fetch_button.setEnabled(True)
-            self.voice_button.setEnabled(True)
-            self.status_label.setText("Status: Ready")
+            self.root.after(0, self.enable_fetch_buttons)
+    
+    def enable_fetch_buttons(self):
+        """Re-enable fetch buttons"""
+        self.fetch_prompt_button.config(state=tk.NORMAL)
+        self.fetch_button.config(state=tk.NORMAL)
+        self.voice_button.config(state=tk.NORMAL)
+        self.status_label.config(text="Status: Ready")
     
     def fetch_selected_tool(self):
         """Fetch the selected tool from list"""
-        current_item = self.tools_list.currentItem()
-        if not current_item:
+        selection = self.tools_listbox.curselection()
+        if not selection:
             self.log("Please select a tool first!", "warning")
             return
         
-        tool_name = current_item.data(Qt.UserRole)
+        tool_name = self.tools_listbox.get(selection[0]).lower()
         self.start_fetch_tool(tool_name)
     
     def start_scan(self):
@@ -2028,12 +1905,12 @@ class MainWindow(QMainWindow):
             return
         
         self.scanning = True
-        self.scan_button.setEnabled(False)
-        self.fetch_prompt_button.setEnabled(False)
-        self.voice_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        self.status_label.setText("Status: Scanning...")
-        self.progress_bar.setValue(0)
+        self.scan_button.config(state=tk.DISABLED)
+        self.fetch_prompt_button.config(state=tk.DISABLED)
+        self.voice_button.config(state=tk.DISABLED)
+        self.stop_button.config(state=tk.NORMAL)
+        self.status_label.config(text="Status: Scanning...")
+        self.progress_bar['value'] = 0
         
         # Run in separate thread
         self.scan_thread = threading.Thread(target=self.run_scan_sequence)
@@ -2043,71 +1920,79 @@ class MainWindow(QMainWindow):
     def run_scan_sequence(self):
         """Run complete scan sequence"""
         try:
-            # Step 1: Take snapshots
             self.log("\n" + "="*50, "system")
             self.log("STARTING AUTOMATIC SCAN SEQUENCE", "system")
             self.log("="*50, "system")
             
             self.log("📸 Step 1: Taking snapshots...", "info")
-            self.progress_bar.setValue(10)
+            self.update_progress(10)
             
             self.current_snapshot_folder = self.snapshot_system.take_snapshots_sequence()
-            self.progress_bar.setValue(50)
+            self.update_progress(50)
             
-            # Step 2: Analyze grab points
             self.log("\n🔍 Step 2: Analyzing grab points...", "info")
             report_path = self.analysis_system.analyze_grab_points(self.current_snapshot_folder)
-            self.progress_bar.setValue(80)
+            self.update_progress(80)
             
-            # Step 3: Load mapping
             self.log("\n🗺️ Step 3: Loading tool mapping...", "info")
             self.tool_mapping = self.grab_system.load_mapping(report_path)
-            self.progress_bar.setValue(90)
+            self.update_progress(90)
             
-            # Update tools list
-            self.update_tools_list()
-            self.progress_bar.setValue(100)
+            self.root.after(0, self.update_tools_list)
+            self.update_progress(100)
             
             self.log("\n✅ SCAN COMPLETE!", "success")
             self.log(f"📊 Tools mapped: {len(self.tool_mapping)}", "success")
             
-            self.update_info(f"Last Scan: {datetime.now().strftime('%H:%M:%S')}",
-                           f"Tools Mapped: {len(self.tool_mapping)}")
+            self.update_info(
+                f"Last Scan: {datetime.now().strftime('%H:%M:%S')}",
+                f"Tools Mapped: {len(self.tool_mapping)}"
+            )
             
         except Exception as e:
             self.log(f"❌ Scan failed: {e}", "error")
         
         finally:
             self.scanning = False
-            self.scan_button.setEnabled(True)
-            self.fetch_prompt_button.setEnabled(True)
-            self.voice_button.setEnabled(True)
-            self.stop_button.setEnabled(True)
-            self.status_label.setText("Status: Ready")
+            self.root.after(0, self.enable_scan_buttons)
+    
+    def update_progress(self, value):
+        """Update progress bar from thread"""
+        self.root.after(0, lambda: self.progress_bar.config(value=value))
+    
+    def enable_scan_buttons(self):
+        """Re-enable scan buttons"""
+        self.scan_button.config(state=tk.NORMAL)
+        self.fetch_prompt_button.config(state=tk.NORMAL)
+        self.voice_button.config(state=tk.NORMAL)
+        self.stop_button.config(state=tk.NORMAL)
+        self.status_label.config(text="Status: Ready")
     
     def update_tools_list(self):
         """Update the tools list widget"""
-        self.tools_list.clear()
+        self.tools_listbox.delete(0, tk.END)
+        
+        color_map = {
+            "hammer": "#f38ba8",
+            "screwdriver": "#89b4fa",
+            "wrench": "#f9e2af",
+            "plier": "#a6e3a1",
+            "bolt": "#cba6f7",
+            "measuring tape": "#f5c2e7",
+            "tape": "#f5c2e7"
+        }
         
         for tool_name in sorted(self.tool_mapping.keys()):
-            item = QListWidgetItem(tool_name.upper())
-            item.setData(Qt.UserRole, tool_name)
+            self.tools_listbox.insert(tk.END, tool_name.upper())
             
-            # Color code based on tool type
-            if "hammer" in tool_name.lower():
-                item.setForeground(QColor("#f38ba8"))
-            elif "screwdriver" in tool_name.lower():
-                item.setForeground(QColor("#89b4fa"))
-            elif "wrench" in tool_name.lower():
-                item.setForeground(QColor("#f9e2af"))
-            elif "plier" in tool_name.lower():
-                item.setForeground(QColor("#a6e3a1"))
-            elif "bolt" in tool_name.lower():
-                item.setForeground(QColor("#cba6f7"))
-            elif "tape" in tool_name.lower():
-                item.setForeground(QColor("#f5c2e7"))
+            # Find the right color
+            color = "#cdd6f4"  # Default color
+            for key, col in color_map.items():
+                if key in tool_name.lower():
+                    color = col
+                    break
             
-            self.tools_list.addItem(item)
+            self.tools_listbox.itemconfig(tk.END, {'fg': color})
         
         if self.tool_mapping:
             self.log(f"Updated tools list with {len(self.tool_mapping)} tools", "success")
@@ -2128,22 +2013,18 @@ class MainWindow(QMainWindow):
         self.scanning = False
         self.fetching = False
         
-        # Disable voice recognition if enabled
         if self.voice_enabled:
             self.disable_voice_recognition()
         
-        # Enable buttons
-        self.scan_button.setEnabled(True)
-        self.fetch_prompt_button.setEnabled(True)
-        self.fetch_button.setEnabled(True)
-        self.voice_button.setEnabled(True)
-        self.status_label.setText("Status: Emergency Stop")
+        self.scan_button.config(state=tk.NORMAL)
+        self.fetch_prompt_button.config(state=tk.NORMAL)
+        self.fetch_button.config(state=tk.NORMAL)
+        self.voice_button.config(state=tk.NORMAL)
+        self.status_label.config(text="Status: Emergency Stop")
         
-        # Stop camera if running
         if self.camera_system:
             self.camera_system.stop()
         
-        # Move arm to safe position
         try:
             self.log("Moving arm to safe position...", "info")
             self.arm_controller.go_to_home()
@@ -2154,35 +2035,31 @@ class MainWindow(QMainWindow):
     def update_info(self, *args):
         """Update system information"""
         text = "\n".join(args)
-        self.info_label.setText(text)
+        self.info_label.config(text=text)
     
     def clear_log(self):
         """Clear the logger"""
-        self.logger_text.clear()
+        self.logger_text.delete(1.0, tk.END)
         self.log("Log cleared", "info")
     
-    def closeEvent(self, event):
+    def run(self):
+        """Start the main loop"""
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.mainloop()
+    
+    def on_closing(self):
         """Cleanup on window close"""
         self.log("Shutting down systems...", "system")
         
-        # Stop any ongoing operations
         self.scanning = False
         self.fetching = False
         
-        # Stop voice recognition
         if self.voice_enabled:
             self.disable_voice_recognition()
         
-        # Stop camera
         if self.camera_system:
             self.camera_system.stop()
         
-        # Stop camera thread
-        if self.camera_thread:
-            self.camera_thread.quit()
-            self.camera_thread.wait()
-        
-        # Move arm to home
         try:
             if self.arm_controller:
                 self.arm_controller.go_to_home()
@@ -2190,28 +2067,22 @@ class MainWindow(QMainWindow):
             pass
         
         self.log("✅ Goodbye!", "success")
-        event.accept()
+        self.root.quit()
+        self.root.destroy()
 
 # ============================================
 # MAIN APPLICATION
 # ============================================
 def main():
-    app = QApplication(sys.argv)
-    
-    # Set application style
-    app.setStyle('Fusion')
-    
-    # Create and show main window
-    window = MainWindow()
-    window.show()
-    
-    sys.exit(app.exec_())
-
-if __name__ == "__main__":
     # Create necessary directories
     os.makedirs("data/snapshots", exist_ok=True)
     os.makedirs("data/mappings", exist_ok=True)
     os.makedirs("config", exist_ok=True)
     os.makedirs("movements", exist_ok=True)
     
+    # Create and run main window
+    window = MainWindow()
+    window.run()
+
+if __name__ == "__main__":
     main()
