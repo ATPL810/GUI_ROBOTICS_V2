@@ -1,0 +1,199 @@
+{
+  "metadata": {
+    "generated": "2025-12-10T15:44:06.535142",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251210_152016",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "A": {
+      "class_name": "Bolt",
+      "confidence": 0.9059999999999999,
+      "distance": 11.715374513859981,
+      "tool_center": [
+        84.0,
+        252.5
+      ],
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "C": {
+      "class_name": "Bolt",
+      "confidence": 0.89,
+      "distance": 44.364963653766246,
+      "tool_center": [
+        376.0,
+        183.5
+      ],
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "B": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "D": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "F": {
+      "class_name": "Bolt",
+      "confidence": 0.914,
+      "distance": 27.613402542968153,
+      "tool_center": [
+        323.5,
+        140.5
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.922,
+      "distance": 69.50719387228922,
+      "tool_center": [
+        190.5,
+        239.0
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "Plier",
+      "confidence": 0.934,
+      "distance": 127.83289873893966,
+      "tool_center": [
+        454.0,
+        295.5
+      ],
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "Measuring Tape",
+      "confidence": 0.6779999999999999,
+      "distance": 90.68627239003708,
+      "tool_center": [
+        220.0,
+        368.0
+      ],
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "Bolt": {
+      "all_locations": [
+        {
+          "grab_point": "F",
+          "distance": 27.613402542968153,
+          "confidence": 0.914,
+          "position": "second_position"
+        },
+        {
+          "grab_point": "A",
+          "distance": 11.715374513859981,
+          "confidence": 0.9059999999999999,
+          "position": "initial_position"
+        },
+        {
+          "grab_point": "C",
+          "distance": 44.364963653766246,
+          "confidence": 0.89,
+          "position": "initial_position"
+        }
+      ],
+      "best_location": {
+        "grab_point": "F",
+        "distance": 27.613402542968153,
+        "confidence": 0.914,
+        "position": "second_position"
+      },
+      "total_count": 3
+    },
+    "Hammer": {
+      "all_locations": [
+        {
+          "grab_point": "E",
+          "distance": 69.50719387228922,
+          "confidence": 0.922,
+          "position": "second_position"
+        }
+      ],
+      "best_location": {
+        "grab_point": "E",
+        "distance": 69.50719387228922,
+        "confidence": 0.922,
+        "position": "second_position"
+      },
+      "total_count": 1
+    },
+    "Plier": {
+      "all_locations": [
+        {
+          "grab_point": "G",
+          "distance": 127.83289873893966,
+          "confidence": 0.934,
+          "position": "second_position"
+        }
+      ],
+      "best_location": {
+        "grab_point": "G",
+        "distance": 127.83289873893966,
+        "confidence": 0.934,
+        "position": "second_position"
+      },
+      "total_count": 1
+    },
+    "Measuring Tape": {
+      "all_locations": [
+        {
+          "grab_point": "H",
+          "distance": 90.68627239003708,
+          "confidence": 0.6779999999999999,
+          "position": "third_position"
+        }
+      ],
+      "best_location": {
+        "grab_point": "H",
+        "distance": 90.68627239003708,
+        "confidence": 0.6779999999999999,
+        "position": "third_position"
+      },
+      "total_count": 1
+    }
+  }
+}

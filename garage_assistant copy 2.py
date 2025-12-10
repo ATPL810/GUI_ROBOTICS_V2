@@ -798,3 +798,85 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    """"/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/.venv/bin/python "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/garage_assistant copy 2.py"
+======================================================================
+           GARAGE ASSISTANT - TOOL FETCHER v2.0
+======================================================================
+✨ NEW: Duplicate tool tracking enabled
+======================================================================
+
+Initializing robot arm...
+   Moving to safe starting position...
+   Robot arm ready
+Using tool mapping from: data/mappings/mapping_20251210_154406/master_report.txt
+
+Parsing tool mapping...
+   Point A: BOLT
+   Point B: BOLT
+   Point C: BOLT
+   Point D: 
+   Point E: HAMMER
+   Point F: BOLT
+   Point G: PLIER
+   Point H: MEASURING TAPE
+   Point I: 
+
+🔍 Parsing ALL tool locations (including duplicates)...
+✓ Found GRAB POINT TOOL ASSIGNMENTS section
+
+Total matches found: 0
+
+Trying ALL TOOL LOCATIONS section instead...
+    ✓ Found in ALL LOCATIONS: bolt at Point F (91.4%)
+    ✓ Found in ALL LOCATIONS: hammer at Point E (92.2%)
+    ✓ Found in ALL LOCATIONS: measuring tape at Point H (67.8%)
+    ✓ Found in ALL LOCATIONS: plier at Point G (93.4%)
+
+✅ Successfully parsed 4 unique tool types:
+  BOLT: 1 location(s)
+    • Point F: 91.4% (second_position)
+  HAMMER: 1 location(s)
+    • Point E: 92.2% (second_position)
+  MEASURING TAPE: 1 location(s)
+    • Point H: 67.8% (third_position)
+  PLIER: 1 location(s)
+    • Point G: 93.4% (second_position)
+   Loaded existing tool status
+
+✅ System initialized successfully!
+✅ Found 5 available tools
+
+📊 DUPLICATE TOOLS INVENTORY:
+----------------------------------------
+  BOLT           : 1 location (Point F)
+  HAMMER         : 1 location (Point E)
+  MEASURING TAPE : 1 location (Point H)
+  PLIER          : 1 location (Point G)
+----------------------------------------
+Total tools (including duplicates): 4
+
+======================================================================
+INTERACTIVE MODE - WITH DUPLICATE TRACKING
+======================================================================
+
+======================================================================
+AVAILABLE TOOLS INVENTORY:
+----------------------------------------
+No tools found!
+
+----------------------------------------
+GARAGE ASSISTANT MENU:
+  1. 🔧 Fetch a tool
+  2. 📋 List available tools
+  3. 🔄 Reset all tools (restock)
+  4. 🧪 Test grab point (dry run)
+  5. 🏠 Return to home position
+  6. ❌ Exit
+----------------------------------------
+
+Enter your choice (1-6): 1
+
+Available tools:
+
+Which tool would you like? """
