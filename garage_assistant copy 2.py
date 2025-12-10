@@ -1,23 +1,23 @@
 """
-GARAGE ASSISTANT TOOL FETCHER - UPDATED
-Handles tool-specific grip forces in grab scripts
+GARAGE ASSISTANT TOOL FETCHER - WITH DUPLICATE HANDLING
+Uses master_report.txt to locate tools and runs corresponding grab scripts
+Tracks duplicate tools and automatically selects next available instance
 """
 
 import os
 import re
 import time
 import sys
+import json
 from pathlib import Path
 from Arm_Lib import Arm_Device
-import json
 
 class GarageAssistant:
     def __init__(self, master_report_path=None):
-        """Initialize the garage assistant"""
+        """Initialize the garage assistant with duplicate tracking"""
         print("=" * 70)
-        print("           GARAGE ASSISTANT - TOOL FETCHER v2.0")
-        print("=" * 70)
-        print("✨ NEW: Duplicate tool tracking enabled")
+        print("           GARAGE ASSISTANT - TOOL FETCHER")
+        print("           (WITH DUPLICATE HANDLING)")
         print("=" * 70)
         
         # Initialize robot arm
@@ -28,26 +28,22 @@ class GarageAssistant:
         self.master_report_path = self.find_master_report(master_report_path)
         print(f"Using tool mapping from: {self.master_report_path}")
         
-        # Parse COMPLETE tool mapping from master report
-        self.tool_mapping, self.tool_locations = self.parse_master_report()
+        # Track fetched tools (for duplicate handling) - INITIALIZE THIS FIRST!
+        self.fetched_tools_file = "data/fetched_tools.json"
+        self.fetched_locations = self.load_fetched_locations()
         
-        # NEW: Parse ALL tool locations including duplicates
-        self.all_tool_locations = self.parse_all_tool_locations()
+        # Parse tool mapping from master report - NOW THIS CAN ACCESS fetched_locations
+        self.tool_mapping, self.all_tool_locations = self.parse_master_report()
         
-        # NEW: Tool status tracking for duplicates
-        self.tool_status = self.load_tool_status()
+        # Sync fetched status after parsing
+        self.sync_fetched_status()
         
         # Available grab scripts
         self.grab_scripts_dir = "movements"
         
         print("\n✅ System initialized successfully!")
-        print(f"✅ Found {len(self.tool_mapping)} available tools")
-        
-        # NEW: Show duplicates summary
-        self.show_duplicates_summary()
-
-        # DEBUG: Check parsing
-        self.debug_parsing()
+        print(f"✅ Found {len(self.tool_mapping)} unique tool types")
+        print(f"✅ Tracking {len(self.fetched_locations)} previously fetched items")
     
     def initialize_arm(self):
         """Initialize the robot arm"""
@@ -75,7 +71,7 @@ class GarageAssistant:
         # Look for master report in data directory
         possible_paths = [
             "data/mappings/mapping_*/master_report.txt",
-            "data/snapshots/robot_snapshots_*/grab_point_assignments.txt",
+            "data/snapshots/robot_snapshots_*/master_report.txt",
             "master_report.txt"
         ]
         
@@ -89,369 +85,252 @@ class GarageAssistant:
         
         raise FileNotFoundError("No master report found! Please run analyze_grab_points.py first.")
     
-    def parse_master_report(self):
-        """Parse tool mapping from master report - returns tool->point and full location data"""
-        print("\nParsing tool mapping...")
+    def load_fetched_locations(self):
+        """Load previously fetched tool locations from file"""
+        fetched_locations = {}
         
-        tool_mapping = {}  # tool_name -> grab_point
-        tool_locations = {}  # grab_point -> tool_data
+        if os.path.exists(self.fetched_tools_file):
+            try:
+                with open(self.fetched_tools_file, 'r') as f:
+                    fetched_locations = json.load(f)
+                print(f"   Loaded {len(fetched_locations)} fetched locations from history")
+            except:
+                print("   Could not load fetched locations history")
+                fetched_locations = {}
         
-        with open(self.master_report_path, 'r') as f:
-            content = f.read()
-            
-            # Parse the GRAB POINT TOOL ASSIGNMENTS section first
-            if "GRAB POINT TOOL ASSIGNMENTS:" in content:
-                sections = content.split("GRAB POINT TOOL ASSIGNMENTS:")[1].split("=")[0]
-                
-                # Extract tool assignments for each point
-                for point_letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I"]:
-                    # Look for pattern like "Point A (75,260): BOLT - 96.2% confidence"
-                    pattern = rf'Point {point_letter}.*?:\s*([A-Z\s]+)\s*-'
-                    match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
-                    if match:
-                        tool_name = match.group(1).strip().lower()
-                        
-                        # Store both mappings
-                        tool_mapping[tool_name] = point_letter
-                        
-                        # Also store full data
-                        tool_locations[point_letter] = {
-                            "tool_name": tool_name,
-                            "point": point_letter
-                        }
-                        print(f"   Point {point_letter}: {tool_name.upper()}")
-            
-            # Also parse TOOL TO GRAB POINT MAPPING section for verification
-            if "TOOL TO GRAB POINT MAPPING:" in content and not tool_mapping:
-                mapping_section = content.split("TOOL TO GRAB POINT MAPPING:")[1]
-                mapping_section = mapping_section.split("=")[0]
-                
-                lines = mapping_section.strip().split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if "→" in line:
-                        parts = line.split("→")
-                        if len(parts) == 2:
-                            tool_name = parts[0].strip().lower()
-                            grab_point = parts[1].strip()
-                            
-                            match = re.search(r'Point\s+([A-I])', grab_point)
-                            if match:
-                                grab_letter = match.group(1)
-                                tool_mapping[tool_name] = grab_letter
-                                
-                                # Store full data
-                                tool_locations[grab_letter] = {
-                                    "tool_name": tool_name,
-                                    "point": grab_letter
-                                }
-                                print(f"   {tool_name.upper():<15} → Point {grab_letter}")
-        
-        return tool_mapping, tool_locations
+        return fetched_locations
     
-    def parse_all_tool_locations(self):
-        """FIXED: Parse ALL tool locations including duplicates"""
-        print("\n🔍 Parsing ALL tool locations (including duplicates)...")
+    def parse_master_report(self):
+        """
+        Parse tool mapping from master report with duplicate handling
+        Returns:
+            - tool_mapping: Dict of tool_name -> list of available locations (sorted by confidence)
+            - all_tool_locations: Complete mapping of all tool instances
+        """
+        print("\nParsing tool mapping (with duplicate handling)...")
         
-        all_locations = {}
+        tool_mapping = {}
+        all_tool_locations = {}
         
         with open(self.master_report_path, 'r') as f:
             content = f.read()
         
-        # METHOD 1: Try to parse from "ALL TOOL LOCATIONS" section first
+        # Look for "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" section
         if "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" in content:
-            print("✓ Using ALL TOOL LOCATIONS section")
+            print("Found duplicate locations section")
             
-            # Extract the section
+            # Extract the entire section
             start_idx = content.find("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
-            section_end = content.find("=" * 75, start_idx)
-            if section_end == -1:
-                section_end = content.find("ROBOT ACTION PLAN", start_idx)
+            # Find the end of this section (look for next major section)
+            next_section_idx = content.find("ROBOT ACTION PLAN", start_idx)
             
-            section = content[start_idx:section_end]
-            lines = section.split('\n')
+            if next_section_idx > start_idx:
+                all_locations_section = content[start_idx:next_section_idx]
+            else:
+                all_locations_section = content[start_idx:]
+            
+            # Split into lines and parse
+            lines = all_locations_section.strip().split('\n')
             
             current_tool = None
             
             for line in lines:
                 line = line.strip()
                 
-                # Skip empty lines and section header
-                if not line or "ALL TOOL LOCATIONS" in line or line.startswith("---"):
-                    continue
-                
-                # Look for tool header: "BOLT (3 locations):"
-                if '(' in line and ')' in line and ':' in line:
-                    # Extract tool name and count
-                    tool_match = re.search(r'([A-Z\s]+)\s*\((\d+)\s*locations?\):', line)
-                    if tool_match:
-                        current_tool = tool_match.group(1).strip().lower()
-                        location_count = int(tool_match.group(2))
-                        print(f"\nFound tool: {current_tool.upper()} ({location_count} locations)")
-                        if current_tool not in all_locations:
-                            all_locations[current_tool] = []
-                    continue
-                
-                # Look for point lines (with or without star)
-                if current_tool and ('Point' in line or '⭐' in line or '•' in line):
-                    # Pattern for: "⭐ Point F: 91.4% (second position)" or "  Point A: 90.6% (initial position)"
-                    pattern = r'[⭐•]?\s*Point\s+([A-I]):\s*([\d.]+)%'
-                    match = re.search(pattern, line)
-                    
+                # Check for tool header (e.g., "BOLT (3 locations):")
+                if "locations):" in line or "(1 location):" in line:
+                    # Extract tool name - match pattern like "BOLT (3 locations):"
+                    match = re.search(r'^([A-Z\s]+)\s*\(', line)
                     if match:
-                        point_letter = match.group(1)
-                        confidence = float(match.group(2))
-                        
-                        # Get position from parentheses if available
-                        position = self.get_position_from_point(point_letter)
-                        pos_match = re.search(r'\(([^)]+)\)', line)
-                        if pos_match:
-                            position_str = pos_match.group(1).lower()
-                            if 'initial' in position_str:
+                        current_tool = match.group(1).strip().lower()
+                        tool_mapping[current_tool] = []
+                        all_tool_locations[current_tool] = []
+                        print(f"   Found tool: {current_tool}")
+                
+                # Parse location lines (e.g., "  Point A: 91.7% (initial position)")
+                elif "Point" in line and current_tool and ":" in line and not line.startswith("="):
+                    # Skip lines that are just dashes or empty
+                    if line.startswith("-") or not line:
+                        continue
+                    
+                    # Try multiple patterns
+                    patterns = [
+                        r'[⭐\s]*Point\s+([A-I]):\s*([\d.]+)%\s*\((.*?)\)',  # "Point A: 91.7% (initial position)"
+                        r'[⭐\s]*Point\s+([A-I]):\s*([\d.]+)%',              # "Point A: 91.7%"
+                    ]
+                    
+                    for pattern in patterns:
+                        match = re.search(pattern, line)
+                        if match:
+                            point = match.group(1)
+                            confidence = float(match.group(2))
+                            
+                            # Try to extract position description
+                            position_desc = "unknown"
+                            if len(match.groups()) > 2 and match.group(3):
+                                position_desc = match.group(3)
+                            else:
+                                # Try to extract from the line
+                                if "initial" in line.lower():
+                                    position_desc = "initial position"
+                                elif "second" in line.lower():
+                                    position_desc = "second position"
+                                elif "third" in line.lower():
+                                    position_desc = "third position"
+                            
+                            # Determine position
+                            if "initial" in position_desc.lower():
                                 position = "initial_position"
-                            elif 'second' in position_str:
+                            elif "second" in position_desc.lower():
                                 position = "second_position"
-                            elif 'third' in position_str:
+                            elif "third" in position_desc.lower():
                                 position = "third_position"
-                        
-                        print(f"  ✓ Point {point_letter}: {confidence}% ({position})")
-                        
-                        all_locations[current_tool].append({
-                            "point": point_letter,
-                            "confidence": confidence / 100,
-                            "position": position
-                        })
+                            else:
+                                position = "unknown"
+                            
+                            # Skip if point E is being added to bolt (E is hammer)
+                            if current_tool == "bolt" and point == "E":
+                                print(f"   Skipping Point E for bolt (E is hammer)")
+                                continue
+                            
+                            location_data = {
+                                "point": point,
+                                "confidence": confidence / 100,
+                                "position": position,
+                                "position_desc": position_desc,
+                                "fetched": False
+                            }
+                            
+                            tool_mapping[current_tool].append(location_data)
+                            all_tool_locations[current_tool].append(location_data)
+                            
+                            print(f"      Point {point}: {confidence}% confidence")
+                            break
         
-        # METHOD 2: If still empty or missing tools, try GRAB POINT section
-        if not all_locations:
-            print("\nNo tools in ALL TOOL LOCATIONS, trying GRAB POINT section...")
-            all_locations = self.parse_from_grab_point_section(content)
+        # Clean up: Remove any tool entries with no locations
+        tools_to_remove = [tool for tool, locations in tool_mapping.items() if not locations]
+        for tool in tools_to_remove:
+            del tool_mapping[tool]
+            del all_tool_locations[tool]
         
         # Sort each tool's locations by confidence (highest first)
-        for tool_name in all_locations:
-            all_locations[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
+        for tool_name in tool_mapping:
+            tool_mapping[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
         
-        print(f"\n✅ Successfully parsed {len(all_locations)} unique tool types:")
-        total_tools = 0
-        for tool_name, locations in all_locations.items():
-            total_tools += len(locations)
-            print(f"  {tool_name.upper()}: {len(locations)} location(s)")
-            for loc in locations:
-                print(f"    • Point {loc['point']}: {loc['confidence']*100:.1f}% ({loc['position']})")
-        
-        print(f"Total tools (including duplicates): {total_tools}")
-        return all_locations
-
-    def parse_from_grab_point_section(self, content):
-        """Parse from GRAB POINT TOOL ASSIGNMENTS section"""
-        all_locations = {}
-        
-        if "GRAB POINT TOOL ASSIGNMENTS:" not in content:
-            return all_locations
-        
-        print("Parsing from GRAB POINT TOOL ASSIGNMENTS...")
-        
-        assignments_section = content.split("GRAB POINT TOOL ASSIGNMENTS:")[1]
-        if "=" in assignments_section:
-            assignments_section = assignments_section.split("=")[0]
-        
-        lines = assignments_section.strip().split('\n')
-        
-        for line in lines:
-            line = line.strip()
-            
-            # Skip empty lines and section headers
-            if not line or line.startswith("---") or "POSITION" in line:
-                continue
-            
-            # Skip "No tool assigned" lines
-            if "No tool assigned" in line:
-                continue
-            
-            # Look for tool assignments: "Point A (75,260): BOLT - 90.6% confidence"
-            if "Point" in line and ':' in line and '-' in line:
-                # Extract point letter
-                point_match = re.search(r'Point\s+([A-I])', line)
-                if not point_match:
-                    continue
-                
-                point_letter = point_match.group(1)
-                
-                # Extract tool name and confidence
-                pattern = r':\s*([A-Z\s]+?)\s*-\s*([\d.]+)%'
-                match = re.search(pattern, line)
-                
-                if match:
-                    tool_name = match.group(1).strip().lower()
-                    confidence = float(match.group(2))
-                    
-                    if tool_name not in all_locations:
-                        all_locations[tool_name] = []
-                    
-                    all_locations[tool_name].append({
-                        "point": point_letter,
-                        "confidence": confidence / 100,
-                        "position": self.get_position_from_point(point_letter)
-                    })
-                    print(f"  ✓ From GRAB POINT: {tool_name} at Point {point_letter} ({confidence}%)")
-        
-        return all_locations
-
-    def get_position_from_point(self, point_letter):
-        """NEW: Helper to get position from point letter"""
-        if point_letter in ["A", "B", "C", "D"]:
-            return "initial_position"
-        elif point_letter in ["E", "F", "G"]:
-            return "second_position"
-        else:  # H, I
-            return "third_position"
-
-    def load_tool_status(self):
-        """NEW: Load tool status from file"""
-        self.tool_status_file = "data/tool_status.json"
-        os.makedirs("data", exist_ok=True)
-        
-        # DEBUG: Check if all_tool_locations is populated
-        print(f"\n🔍 DEBUG in load_tool_status():")
-        print(f"  self.all_tool_locations type: {type(self.all_tool_locations)}")
-        print(f"  self.all_tool_locations keys: {list(self.all_tool_locations.keys())}")
-        
-        if os.path.exists(self.tool_status_file):
-            try:
-                with open(self.tool_status_file, 'r') as f:
-                    status = json.load(f)
-                print("   Loaded existing tool status")
-                
-                # Verify the loaded status has tools
-                if not status:
-                    print("   Warning: Loaded status is empty, will recreate")
-                    return self.create_new_tool_status()
-                
-                return status
-            except Exception as e:
-                print(f"   Error loading tool status: {e}, creating new one")
-                return self.create_new_tool_status()
-        
-        print("   Creating new tool status")
-        return self.create_new_tool_status()
-
-    def create_new_tool_status(self):
-        """Create new tool status from all_tool_locations"""
-        status = {}
-        
-        if not self.all_tool_locations:
-            print("   WARNING: all_tool_locations is empty! Trying to parse again...")
-            # Try to parse again
-            self.all_tool_locations = self.parse_all_tool_locations()
-        
-        if self.all_tool_locations:
-            for tool_name, locations in self.all_tool_locations.items():
-                if locations:  # Only add if there are locations
-                    status[tool_name] = {
-                        "available": [loc["point"] for loc in locations],
-                        "fetched": [],
-                        "next_available": locations[0]["point"] if locations else None
-                    }
-            print(f"   Created status for {len(status)} tools")
-        else:
-            print("   ERROR: Cannot create tool status - no tools found!")
-        
-        self.save_tool_status(status)
-        return status
-
-    def save_tool_status(self, status=None):
-        """NEW: Save tool status to file"""
-        if status is None:
-            status = self.tool_status
-        
-        with open(self.tool_status_file, 'w') as f:
-            json.dump(status, f, indent=2)
-
-    def update_tool_status(self, tool_name, fetched_point):
-        """NEW: Update status after fetching"""
-        if tool_name in self.tool_status:
-            # Remove from available, add to fetched
-            if fetched_point in self.tool_status[tool_name]["available"]:
-                self.tool_status[tool_name]["available"].remove(fetched_point)
-                self.tool_status[tool_name]["fetched"].append(fetched_point)
-                
-                # Update next available (highest confidence remaining)
-                if self.tool_status[tool_name]["available"]:
-                    remaining_points = self.tool_status[tool_name]["available"]
-                    remaining_locations = [loc for loc in self.all_tool_locations[tool_name] 
-                                        if loc["point"] in remaining_points]
-                    if remaining_locations:
-                        remaining_locations.sort(key=lambda x: x["confidence"], reverse=True)
-                        self.tool_status[tool_name]["next_available"] = remaining_locations[0]["point"]
-                    else:
-                        self.tool_status[tool_name]["next_available"] = None
-                else:
-                    self.tool_status[tool_name]["next_available"] = None
-                
-                self.save_tool_status()
-                return True
-        
-        return False
-
-    def show_duplicates_summary(self):
-        """NEW: Show summary of duplicate tools"""
-        print("\n📊 DUPLICATE TOOLS INVENTORY:")
+        # Print summary
+        print("\n" + "-" * 40)
+        print("TOOL MAPPING SUMMARY:")
         print("-" * 40)
         
-        total_tools = 0
-        for tool_name, locations in self.all_tool_locations.items():
+        for tool_name, locations in sorted(tool_mapping.items()):
             count = len(locations)
-            total_tools += count
-            
             if count > 1:
-                print(f"  {tool_name.upper():<15}: {count} locations")
-                for loc in locations[:3]:  # Show top 3
-                    print(f"    • Point {loc['point']}: {loc['confidence']*100:.1f}%")
-                if count > 3:
-                    print(f"    • ... and {count-3} more")
+                print(f"   {tool_name.upper():<15} → {count} locations (duplicate)")
+                # List all locations
+                for loc in locations:
+                    print(f"      Point {loc['point']}: {loc['confidence']*100:.1f}%")
             else:
-                print(f"  {tool_name.upper():<15}: 1 location (Point {locations[0]['point']})")
+                print(f"   {tool_name.upper():<15} → 1 location")
         
-        print("-" * 40)
-        print(f"Total tools (including duplicates): {total_tools}")
+        return tool_mapping, all_tool_locations
     
-    def list_available_tools(self):
-        """List all available tools - ENHANCED to show duplicates"""
-        print("\n" + "=" * 70)
-        print("AVAILABLE TOOLS INVENTORY:")
-        print("-" * 40)
+    def sync_fetched_status(self):
+        """Sync fetched status from fetched_locations to tool_mapping"""
+        print("\nSyncing fetched status...")
         
-        if not self.tool_status:
-            print("No tools found!")
+        for tool_name, locations in self.tool_mapping.items():
+            for location in locations:
+                location_key = f"{tool_name}_{location['point']}"
+                if location_key in self.fetched_locations:
+                    location["fetched"] = True
+                    print(f"   Marked {tool_name.upper()} at Point {location['point']} as fetched")
+                else:
+                    location["fetched"] = False
+    
+    def save_fetched_location(self, tool_name, point):
+        """Save a fetched location to history"""
+        location_key = f"{tool_name}_{point}"
+        self.fetched_locations[location_key] = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "tool": tool_name,
+            "point": point
+        }
+        
+        # Update in-memory mapping
+        if tool_name in self.tool_mapping:
+            for location in self.tool_mapping[tool_name]:
+                if location["point"] == point:
+                    location["fetched"] = True
+        
+        # Save to file
+        try:
+            os.makedirs(os.path.dirname(self.fetched_tools_file), exist_ok=True)
+            with open(self.fetched_tools_file, 'w') as f:
+                json.dump(self.fetched_locations, f, indent=2)
+        except Exception as e:
+            print(f"Warning: Could not save fetched location: {e}")
+    
+    def get_next_available_location(self, tool_name):
+        """
+        Get the next available (not fetched) location for a tool
+        Returns None if all instances are fetched
+        """
+        if tool_name not in self.tool_mapping:
+            return None
+        
+        locations = self.tool_mapping[tool_name]
+        
+        # Find first available (not fetched) location
+        for location in locations:
+            if not location.get("fetched", False):
+                return location
+        
+        # All locations fetched
+        return None
+    
+    def list_available_tools(self, show_details=False):
+        """List all available tools with inventory status"""
+        print("\n" + "=" * 70)
+        print("WORKSHOP INVENTORY:")
+        print("=" * 70)
+        
+        if not self.tool_mapping:
+            print("No tools found in mapping!")
             return
         
-        # List all tools with availability
-        for tool_name in sorted(self.tool_status.keys()):
-            status = self.tool_status[tool_name]
-            available_count = len(status["available"])
-            fetched_count = len(status["fetched"])
-            total_count = available_count + fetched_count
+        total_tools = 0
+        available_tools = 0
+        
+        for tool_name in sorted(self.tool_mapping.keys()):
+            locations = self.tool_mapping[tool_name]
+            total_count = len(locations)
+            fetched_count = sum(1 for loc in locations if loc.get("fetched", False))
+            available_count = total_count - fetched_count
             
-            if total_count > 1:
-                # Tool has duplicates
-                print(f"\n{tool_name.upper():<15} [Total: {total_count}, Available: {available_count}]")
-                if available_count > 0:
-                    print(f"   Available at: {', '.join(status['available'])}")
-                if fetched_count > 0:
-                    print(f"   Already taken: {', '.join(status['fetched'])}")
+            total_tools += total_count
+            available_tools += available_count
+            
+            status = "✅" if available_count > 0 else "⛔"
+            
+            if show_details:
+                print(f"\n{status} {tool_name.upper():<15}")
+                print(f"   Total: {total_count}, Available: {available_count}, Fetched: {fetched_count}")
+                
+                for i, loc in enumerate(locations, 1):
+                    fetched_flag = "✓" if loc.get("fetched", False) else "○"
+                    print(f"   {fetched_flag} Location {i}: Point {loc['point']} ({loc['confidence']*100:.1f}%)")
             else:
-                # Single tool
-                if available_count > 0:
-                    print(f"  • {tool_name.upper():<15} [Available at: Point {status['available'][0]}]")
+                if available_count > 1:
+                    print(f"  {status} {tool_name.upper():<15} → {available_count} available ({total_count} total)")
+                elif available_count == 1:
+                    print(f"  {status} {tool_name.upper():<15} → 1 available ({total_count} total)")
                 else:
-                    print(f"  • {tool_name.upper():<15} [OUT OF STOCK]")
+                    print(f"  {status} {tool_name.upper():<15} → OUT OF STOCK ({total_count} total)")
         
         print("-" * 40)
-        
-        # Show quick summary
-        total_available = sum(len(s["available"]) for s in self.tool_status.values())
-        total_fetched = sum(len(s["fetched"]) for s in self.tool_status.values())
-        print(f"Quick Stats: {total_available} tools available, {total_fetched} fetched")
+        print(f"Total unique tools: {len(self.tool_mapping)}")
+        print(f"Total tool instances: {total_tools}")
+        print(f"Available for fetching: {available_tools}")
         print("=" * 70)
     
     def check_grab_script_exists(self, grab_letter):
@@ -459,15 +338,15 @@ class GarageAssistant:
         script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
         return os.path.exists(script_path)
     
-    def execute_grab_script(self, grab_letter, tool_name):
-        """Execute the grab script for a specific point - UNIVERSAL VERSION"""
+    def execute_grab_script(self, grab_letter):
+        """Execute the grab script for a specific point"""
         script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
         
         if not os.path.exists(script_path):
             print(f"ERROR: Grab script not found: {script_path}")
             return False
         
-        print(f"\nExecuting grab script for Point {grab_letter} - {tool_name.upper()}...")
+        print(f"\nExecuting grab script for Point {grab_letter}...")
         
         try:
             # Import and execute the script
@@ -484,66 +363,25 @@ class GarageAssistant:
             # Execute the module
             spec.loader.exec_module(module)
             
-            # Get the grab function
-            grab_func_name = f"grab_point_{grab_letter}"
-            if not hasattr(module, grab_func_name):
-                print(f"❌ ERROR: Function {grab_func_name} not found in script")
-                return False
-            
-            grab_func = getattr(module, grab_func_name)
-            
-            # UNIVERSAL APPROACH: Try both calling patterns
-            success = False
-            
-            # Pattern 1: Try with tool_type parameter (for scripts like B)
-            try:
-                print(f"   Trying Pattern 1: with tool_type='{tool_name}'")
-                grab_func(self.arm, tool_type=tool_name)
-                print(f"   ✓ Success with tool_type parameter")
-                success = True
-            except TypeError as e1:
-                # Pattern 2: Try without parameter (for scripts like A)
-                try:
-                    print(f"   Trying Pattern 2: without parameters")
-                    grab_func(self.arm)
-                    print(f"   ✓ Success without parameters")
-                    success = True
-                except TypeError as e2:
-                    # Pattern 3: Try with tool_name (alternative parameter name)
-                    try:
-                        print(f"   Trying Pattern 3: with tool_name='{tool_name}'")
-                        grab_func(self.arm, tool_name=tool_name)
-                        print(f"   ✓ Success with tool_name parameter")
-                        success = True
-                    except TypeError as e3:
-                        print(f"❌ ERROR: Function doesn't accept expected parameters")
-                        print(f"   Error 1 (tool_type): {e1}")
-                        print(f"   Error 2 (no params): {e2}")
-                        print(f"   Error 3 (tool_name): {e3}")
-                        success = False
-            
-            # Check if script actually grabbed the right tool
-            if success:
-                # Read the script to see what tool it's configured for
-                with open(script_path, 'r') as f:
-                    script_content = f.read()
+            # Call the main function if it exists
+            if hasattr(module, f"grab_point_{grab_letter}"):
+                grab_func = getattr(module, f"grab_point_{grab_letter}")
+                grab_func(self.arm)
+            elif hasattr(module, "main"):
+                module.main()
+            else:
+                print(f"Warning: No grab function found in {script_path}")
+                # Try to execute the script directly
+                exec(open(script_path).read(), {"arm": self.arm})
                 
-                # Check if script mentions a specific tool
-                if "BOLT" in script_content.upper() and "bolt" not in tool_name.lower():
-                    print(f"⚠️  WARNING: Script appears to be for BOLTS, but fetching {tool_name.upper()}")
-                elif "WRENCH" in script_content.upper() and "wrench" not in tool_name.lower():
-                    print(f"⚠️  WARNING: Script appears to be for WRENCH, but fetching {tool_name.upper()}")
-                    
         except Exception as e:
-            print(f"❌ ERROR executing grab script: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"ERROR executing grab script: {e}")
             return False
         
-        return success
+        return True
     
     def fetch_tool(self, tool_name):
-        """Fetch a specific tool by name - ENHANCED for duplicates"""
+        """Fetch a specific tool by name with duplicate handling"""
         tool_name_lower = tool_name.lower().strip()
         
         print(f"\n" + "=" * 70)
@@ -551,61 +389,46 @@ class GarageAssistant:
         print("=" * 70)
         
         # Check if tool exists
-        if tool_name_lower not in self.tool_status:
-            print(f"❌ Tool '{tool_name}' not found in workshop!")
-            print("\nAvailable tools are:")
-            for available_tool in sorted(self.tool_status.keys()):
-                count = len(self.tool_status[available_tool]["available"])
-                status = f"({count} available)" if count > 0 else "(OUT OF STOCK)"
-                print(f"  • {available_tool.upper():<15} {status}")
+        if tool_name_lower not in self.tool_mapping:
+            print(f"❌ Tool '{tool_name_lower}' not found in workshop!")
+            self.list_available_tools()
             return False
         
-        # Check if tool is available
-        status = self.tool_status[tool_name_lower]
-        if not status["available"]:
-            print(f"❌ No more '{tool_name}' available!")
-            if status["fetched"]:
-                print(f"   Previously fetched from: {', '.join(status['fetched'])}")
+        # Get next available location
+        location = self.get_next_available_location(tool_name_lower)
+        
+        if location is None:
+            print(f"⛔ All {tool_name_lower.upper()} instances have been fetched!")
+            print(f"   Total inventory: {len(self.tool_mapping[tool_name_lower])}")
+            print(f"   Fetched: {len(self.tool_mapping[tool_name_lower])}")
+            
+            # Show all locations
+            print("\nAll locations (all fetched):")
+            for i, loc in enumerate(self.tool_mapping[tool_name_lower], 1):
+                print(f"   {i}. Point {loc['point']} - {loc['confidence']*100:.1f}% confidence")
+            
             return False
         
-        # Get next available point (highest confidence)
-        grab_letter = status["next_available"]
+        grab_letter = location["point"]
+        confidence = location["confidence"]
+        position_desc = location["position_desc"]
         
-        # Show detailed tool status
-        print(f"\n📋 TOOL STATUS: {tool_name_lower.upper()}")
-        print(f"   Available at {len(status['available'])} location(s): {', '.join(status['available'])}")
-        if status["fetched"]:
-            print(f"   Already fetched from: {', '.join(status['fetched'])}")
-        print(f"   Fetching from: Point {grab_letter} (highest confidence)")
+        print(f"📍 Tool location: Point {grab_letter} ({position_desc})")
+        print(f"📊 Confidence: {confidence*100:.1f}%")
         
-        # Show all locations with confidence
-        if tool_name_lower in self.all_tool_locations:
-            print(f"\n📊 All locations for {tool_name_lower.upper()}:")
-            for loc in self.all_tool_locations[tool_name_lower]:
-                status_symbol = "✓" if loc["point"] in status["available"] else "✗"
-                current_indicator = " ← CURRENT" if loc["point"] == grab_letter else ""
-                print(f"   {status_symbol} Point {loc['point']}: {loc['confidence']*100:.1f}%{current_indicator}")
+        # Show inventory status
+        total_count = len(self.tool_mapping[tool_name_lower])
+        fetched_count = sum(1 for loc in self.tool_mapping[tool_name_lower] if loc.get("fetched", False))
+        remaining = total_count - fetched_count - 1  # Minus the one we're about to fetch
+        
+        if total_count > 1:
+            print(f"📦 Inventory: {remaining} more available after this fetch")
         
         # Check if grab script exists
         if not self.check_grab_script_exists(grab_letter):
             print(f"❌ No grab script found for Point {grab_letter}")
             print(f"   Please create movements/grab_point_{grab_letter}.py")
             return False
-        
-        # Show grab plan
-        print(f"\n📋 GRAB PLAN:")
-        print(f"   Tool: {tool_name_lower.upper()}")
-        print(f"   Location: Point {grab_letter}")
-        
-        # Get which position this is in
-        if grab_letter in ["A", "B", "C", "D"]:
-            position = "Initial Position (Base: 90°)"
-        elif grab_letter in ["E", "F", "G"]:
-            position = "Second Position (Base: 40°)"
-        else:  # H, I
-            position = "Third Position (Base: 1°)"
-        
-        print(f"   Arm Position: {position}")
         
         # Confirm with user
         print(f"\nReady to fetch {tool_name_lower.upper()} from Point {grab_letter}")
@@ -616,139 +439,158 @@ class GarageAssistant:
         
         # Execute grab sequence
         print("\n🚀 Starting fetch sequence...")
-        success = self.execute_grab_script(grab_letter, tool_name_lower)
+        success = self.execute_grab_script(grab_letter)
         
         if success:
-            print(f"\n✅ Successfully fetched {tool_name_lower.upper()} from Point {grab_letter}!")
+            # Mark as fetched
+            self.save_fetched_location(tool_name_lower, grab_letter)
             
-            # Update tool status
-            self.update_tool_status(tool_name_lower, grab_letter)
+            print(f"\n✅ Successfully fetched {tool_name_lower.upper()}!")
             
             # Show remaining inventory
-            remaining = len(self.tool_status[tool_name_lower]["available"])
-            if remaining > 0:
-                print(f"\n🔄 {tool_name_lower.upper()} INVENTORY UPDATE:")
-                print(f"   Remaining: {remaining} available")
-                print(f"   Next available at: Point {self.tool_status[tool_name_lower]['next_available']}")
-            else:
-                print(f"\n⚠️  INVENTORY ALERT: No more {tool_name_lower.upper()} left!")
-            
-            # Ask if user wants to return tool
-            if self.ask_return_tool(tool_name_lower, grab_letter):
-                self.return_tool_to_position(tool_name_lower, grab_letter)
+            if total_count > 1:
+                new_remaining = total_count - (fetched_count + 1)
+                if new_remaining > 0:
+                    print(f"📦 {new_remaining} more {tool_name_lower.upper()} available in workshop")
+                else:
+                    print(f"📦 Last {tool_name_lower.upper()} fetched!")
             
             return True
         else:
             print(f"\n❌ Failed to fetch {tool_name_lower.upper()}")
             return False
     
-    def ask_return_tool(self, tool_name, grab_letter):
-        """Ask user if they want to return the tool"""
-        print("\n" + "-" * 40)
-        response = input(f"Return {tool_name.upper()} to Point {grab_letter}? (yes/no): ").strip().lower()
-        return response in ["yes", "y"]
-    
-    def return_tool_to_position(self, tool_name, grab_letter):
-        """Return tool to its original position"""
-        print(f"\nReturning {tool_name.upper()} to Point {grab_letter}...")
+    def reset_fetched_tools(self, tool_name=None):
+        """Reset fetched status for tools (or specific tool)"""
+        print("\n" + "=" * 70)
+        print("RESET FETCHED TOOLS")
+        print("=" * 70)
         
-        # This would be the reverse sequence of your grab script
-        # For now, just move to home position
-        print("   Moving to home position...")
-        self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
-        time.sleep(2)
+        if tool_name:
+            # Reset specific tool
+            if tool_name in self.tool_mapping:
+                for location in self.tool_mapping[tool_name]:
+                    location["fetched"] = False
+                
+                # Remove from fetched locations
+                keys_to_remove = [k for k in self.fetched_locations.keys() if k.startswith(f"{tool_name}_")]
+                for key in keys_to_remove:
+                    del self.fetched_locations[key]
+                
+                print(f"Reset fetched status for {tool_name.upper()}")
+                print(f"Removed {len(keys_to_remove)} fetched records")
+            else:
+                print(f"Tool {tool_name} not found")
+        else:
+            # Reset all tools
+            for tool_name in self.tool_mapping:
+                for location in self.tool_mapping[tool_name]:
+                    location["fetched"] = False
+            
+            self.fetched_locations = {}
+            print("Reset all fetched tools")
+            print(f"Cleared {len(self.tool_mapping)} tools")
         
-        print(f"✅ Tool returned (simulated)")
+        # Save changes
+        try:
+            with open(self.fetched_tools_file, 'w') as f:
+                json.dump(self.fetched_locations, f, indent=2)
+            print("Saved reset to file")
+        except Exception as e:
+            print(f"Warning: Could not save reset: {e}")
     
     def interactive_mode(self):
         """Run in interactive mode with user input"""
         print("\n" + "=" * 70)
-        print("INTERACTIVE MODE - WITH DUPLICATE TRACKING")
+        print("INTERACTIVE MODE")
         print("=" * 70)
         
         # Show available tools
         self.list_available_tools()
         
         while True:
-            print("\n" + "-" * 40)
-            print("GARAGE ASSISTANT MENU:")
-            print("  1. 🔧 Fetch a tool")
-            print("  2. 📋 List available tools")
-            print("  3. 🔄 Reset all tools (restock)")
-            print("  4. 🧪 Test grab point (dry run)")
-            print("  5. 🏠 Return to home position")
-            print("  6. ❌ Exit")
-            print("-" * 40)
+            print("\n" + "-" * 50)
+            print("MAIN MENU:")
+            print("  1. Fetch a tool")
+            print("  2. List available tools (detailed)")
+            print("  3. Reset fetched tools")
+            print("  4. Test grab point")
+            print("  5. Return to home position")
+            print("  6. Exit")
+            print("-" * 50)
             
             choice = input("\nEnter your choice (1-6): ").strip()
             
             if choice == "1":
-                # Fetch tool - UPDATED to use tool_status
+                # Fetch tool
                 print("\nAvailable tools:")
-                for tool_name in sorted(self.tool_status.keys()):
-                    status = self.tool_status[tool_name]
-                    available_count = len(status["available"])
+                for tool_name in sorted(self.tool_mapping.keys()):
+                    locations = self.tool_mapping[tool_name]
+                    available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+                    total_count = len(locations)
+                    
                     if available_count > 0:
-                        count_text = f"({available_count} available)" if available_count > 1 else ""
-                        print(f"  • {tool_name.upper():<15} {count_text}")
+                        print(f"  • {tool_name.upper():<15} ({available_count}/{total_count} available)")
                 
                 tool_name = input("\nWhich tool would you like? ").strip()
                 if tool_name:
                     self.fetch_tool(tool_name)
             
             elif choice == "2":
-                # List tools
-                self.list_available_tools()
+                # List tools with details
+                self.list_available_tools(show_details=True)
             
             elif choice == "3":
-                # Reset tools
-                confirm = input("\nAre you sure you want to reset all tools? (yes/no): ").strip().lower()
-                if confirm in ["yes", "y"]:
-                    self.reset_tool_status()
+                # Reset fetched tools
+                print("\nReset options:")
+                print("  1. Reset all tools")
+                print("  2. Reset specific tool")
+                
+                reset_choice = input("\nEnter choice (1-2): ").strip()
+                
+                if reset_choice == "1":
+                    confirm = input("Are you sure you want to reset ALL fetched tools? (yes/no): ").strip().lower()
+                    if confirm == "yes":
+                        self.reset_fetched_tools()
+                elif reset_choice == "2":
+                    print("\nAvailable tools to reset:")
+                    for tool_name in sorted(self.tool_mapping.keys()):
+                        print(f"  • {tool_name.upper()}")
+                    
+                    tool_name = input("\nWhich tool to reset? ").strip().lower()
+                    if tool_name:
+                        self.reset_fetched_tools(tool_name)
             
             elif choice == "4":
-                # Test grab point (dry run)
-                self.test_grab_point_dry_run()
+                # Test specific grab point
+                print("\nTest grab point:")
+                grab_letter = input("Enter grab point letter (A-I): ").strip().upper()
+                if grab_letter and grab_letter in "ABCDEFGHI":
+                    if self.check_grab_script_exists(grab_letter):
+                        print(f"Testing Point {grab_letter}...")
+                        self.execute_grab_script(grab_letter)
+                    else:
+                        print(f"No script for Point {grab_letter}")
+                else:
+                    print("Invalid grab point")
             
             elif choice == "5":
                 # Return to home
-                print("\n🏠 Returning to home position...")
+                print("\nReturning to home position...")
                 self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
                 time.sleep(2)
                 print("✅ Arm at home position")
             
             elif choice == "6":
                 # Exit
-                print("\n🏠 Returning arm to home position...")
+                print("\nReturning arm to home position...")
                 self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
                 time.sleep(2)
-                print("\n👋 Goodbye! Have a productive day in the garage!")
+                print("\n👋 Goodbye!")
                 break
             
             else:
-                print("❌ Invalid choice. Please try again.")
-        
-    def test_grab_point_dry_run(self):
-        """Test a grab point without actually grabbing"""
-        print("\n" + "=" * 70)
-        print("TEST GRAB POINT (DRY RUN)")
-        print("=" * 70)
-        
-        print("\nAvailable grab points:")
-        for grab_letter in sorted(set(self.tool_mapping.values())):
-            if grab_letter in self.tool_locations:
-                tool_name = self.tool_locations[grab_letter]["tool_name"].upper()
-                print(f"  Point {grab_letter}: {tool_name}")
-        
-        grab_letter = input("\nWhich point to test? (A-I): ").strip().upper()
-        
-        if grab_letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I"]:
-            print(f"\n🧪 Testing Point {grab_letter} (Dry Run)...")
-            print("   Moving to approach position...")
-            print("   (Simulating grab sequence)")
-            print("   ✓ Dry run completed successfully")
-        else:
-            print("❌ Invalid grab point")
+                print("Invalid choice. Please try again.")
     
     def voice_command_mode(self, command):
         """Handle voice command (for integration with voice assistant)"""
@@ -762,63 +604,38 @@ class GarageAssistant:
             if keyword in command:
                 # Extract tool name
                 tool_name = command.replace(keyword, "").strip()
-                tool_name = tool_name.replace("a ", "").replace("an ", "").replace("the ", "").strip()
                 if tool_name:
                     return self.fetch_tool(tool_name)
         
         # Handle other commands
-        if "list tools" in command or "what tools" in command or "available tools" in command:
+        if "list" in command and "tool" in command:
             self.list_available_tools()
             return True
         
-        elif "home" in command or "rest" in command or "park" in command:
+        elif "reset" in command and "tool" in command:
+            parts = command.split()
+            if len(parts) > 2:
+                # Try to extract tool name
+                tool_name = parts[-1]  # Last word might be tool name
+                self.reset_fetched_tools(tool_name)
+            else:
+                self.reset_fetched_tools()
+            return True
+        
+        elif "home" in command or "rest" in command:
             print("Returning to home position...")
             self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
             time.sleep(2)
-            print("✅ Arm at home position")
             return True
         
-        elif "test" in command:
-            self.test_grab_point_dry_run()
+        elif "inventory" in command or "status" in command:
+            self.list_available_tools(show_details=True)
             return True
         
         else:
             print(f"Sorry, I don't understand: '{command}'")
-            print("Try: 'get hammer', 'list tools', 'test point A', or 'go home'")
+            print("Try: 'get hammer', 'list tools', 'reset tools', or 'go home'")
             return False
-        
-    def reset_tool_status(self):
-        """NEW: Reset all tools to available (simulate restocking)"""
-        print("\n🔄 Resetting all tools to available...")
-        
-        for tool_name, locations in self.all_tool_locations.items():
-            self.tool_status[tool_name] = {
-                "available": [loc["point"] for loc in locations],
-                "fetched": [],
-                "next_available": locations[0]["point"] if locations else None
-            }
-        
-        self.save_tool_status()
-        print("✅ All tools reset to available!")
-        self.list_available_tools()
-        
-    def debug_parsing(self):
-        """Debug what's happening with parsing"""
-        print("\n🔍 DEBUG: Checking parsing results...")
-        
-        print(f"1. self.tool_mapping keys: {list(self.tool_mapping.keys())}")
-        print(f"2. self.all_tool_locations type: {type(self.all_tool_locations)}")
-        print(f"3. self.all_tool_locations keys: {list(self.all_tool_locations.keys())}")
-        
-        if self.all_tool_locations:
-            print("\nDetails of all_tool_locations:")
-            for tool_name, locations in self.all_tool_locations.items():
-                print(f"  {tool_name}: {len(locations)} locations")
-                for loc in locations:
-                    print(f"    • Point {loc['point']} ({loc['confidence']*100:.1f}%)")
-        
-        print(f"\n4. self.tool_status type: {type(self.tool_status)}")
-        print(f"5. self.tool_status keys: {list(self.tool_status.keys())}")
 
 def main():
     """Main execution function"""
@@ -845,7 +662,7 @@ def main():
     
     except KeyboardInterrupt:
         print("\n\n⚠️  Program interrupted by user")
-        print("🏠 Returning arm to home position...")
+        print("Returning arm to home position...")
         # Try to return to home if possible
         try:
             assistant.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
@@ -859,118 +676,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    """"(.venv) pi@raspberrypi:~/Desktop/Gui/GUI_ROBOTICS_V2 $ /home/pi/Desktop/Gui/GUI_ROBOTICS_V2/.venv/bin/python "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/garage_assistant copy 2.py"
-======================================================================
-           GARAGE ASSISTANT - TOOL FETCHER v2.0
-======================================================================
-✨ NEW: Duplicate tool tracking enabled
-======================================================================
-
-Initializing robot arm...
-   Moving to safe starting position...
-   Robot arm ready
-Using tool mapping from: data/mappings/mapping_20251210_154808/master_report.txt
-
-Parsing tool mapping...
-   BOLT            → Point A
-   HAMMER          → Point E
-   MEASURING TAPE  → Point H
-   PLIER           → Point G
-
-🔍 Parsing ALL tool locations (including duplicates)...
-
-No tools in ALL TOOL LOCATIONS, trying GRAB POINT section...
-
-✅ Successfully parsed 0 unique tool types:
-Total tools (including duplicates): 0
-
-🔍 DEBUG in load_tool_status():
-  self.all_tool_locations type: <class 'dict'>
-  self.all_tool_locations keys: []
-   Loaded existing tool status
-   Warning: Loaded status is empty, will recreate
-   WARNING: all_tool_locations is empty! Trying to parse again...
-
-🔍 Parsing ALL tool locations (including duplicates)...
-
-No tools in ALL TOOL LOCATIONS, trying GRAB POINT section...
-
-✅ Successfully parsed 0 unique tool types:
-Total tools (including duplicates): 0
-   ERROR: Cannot create tool status - no tools found!
-
-✅ System initialized successfully!
-✅ Found 4 available tools
-
-📊 DUPLICATE TOOLS INVENTORY:
-----------------------------------------
-----------------------------------------
-Total tools (including duplicates): 0
-
-🔍 DEBUG: Checking parsing results...
-1. self.tool_mapping keys: ['bolt', 'hammer', 'measuring tape', 'plier']
-2. self.all_tool_locations type: <class 'dict'>
-3. self.all_tool_locations keys: []
-
-4. self.tool_status type: <class 'dict'>
-5. self.tool_status keys: []
-
-======================================================================
-INTERACTIVE MODE - WITH DUPLICATE TRACKING
-======================================================================
-
-======================================================================
-AVAILABLE TOOLS INVENTORY:
-----------------------------------------
-No tools found!
-
-----------------------------------------
-GARAGE ASSISTANT MENU:
-  1. 🔧 Fetch a tool
-  2. 📋 List available tools
-  3. 🔄 Reset all tools (restock)
-  4. 🧪 Test grab point (dry run)
-  5. 🏠 Return to home position
-  6. ❌ Exit
-----------------------------------------
-
-Enter your choice (1-6): 1
-
-Available tools:
-
-Which tool would you like? hammer
-
-======================================================================
-REQUEST: Fetch 'HAMMER'
-======================================================================
-❌ Tool 'hammer' not found in workshop!
-
-Available tools are:
-
-----------------------------------------
-GARAGE ASSISTANT MENU:
-  1. 🔧 Fetch a tool
-  2. 📋 List available tools
-  3. 🔄 Reset all tools (restock)
-  4. 🧪 Test grab point (dry run)
-  5. 🏠 Return to home position
-  6. ❌ Exit
-----------------------------------------
-
-Enter your choice (1-6): 2
-
-======================================================================
-AVAILABLE TOOLS INVENTORY:
-----------------------------------------
-No tools found!
-
-----------------------------------------
-GARAGE ASSISTANT MENU:
-  1. 🔧 Fetch a tool
-  2. 📋 List available tools
-  3. 🔄 Reset all tools (restock)
-  4. 🧪 Test grab point (dry run)
-  5. 🏠 Return to home position
-  6. ❌ Exit
-----------------------------------------"""

@@ -1,0 +1,47 @@
+{
+  "bolt_A": {
+    "timestamp": "2025-12-10 17:06:30",
+    "tool": "bolt",
+    "point": "A"
+  },
+  "hammer_E": {
+    "timestamp": "2025-12-10 17:06:57",
+    "tool": "hammer",
+    "point": "E"
+  },
+  "wrench_B": {
+    "timestamp": "2025-12-10 17:07:33",
+    "tool": "wrench",
+    "point": "B"
+  },
+  "wrench_D": {
+    "timestamp": "2025-12-10 17:08:01",
+    "tool": "wrench",
+    "point": "D"
+  },
+  "plier_G": {
+    "timestamp": "2025-12-10 17:08:33",
+    "tool": "plier",
+    "point": "G"
+  },
+  "bolt_F": {
+    "timestamp": "2025-12-10 17:09:13",
+    "tool": "bolt",
+    "point": "F"
+  },
+  "screwdriver_I": {
+    "timestamp": "2025-12-10 17:09:40",
+    "tool": "screwdriver",
+    "point": "I"
+  },
+  "measuring tape_H": {
+    "timestamp": "2025-12-10 17:10:22",
+    "tool": "measuring tape",
+    "point": "H"
+  },
+  "bolt_C": {
+    "timestamp": "2025-12-10 17:10:49",
+    "tool": "bolt",
+    "point": "C"
+  }
+}

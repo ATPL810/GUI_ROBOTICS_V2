@@ -1,0 +1,114 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-10 16:54:35
+Snapshot Session: 20251210_165120
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 7
+Points without Tools: 2
+Unique Tool Types: 5
+Total Tools (including duplicates): 7
+
+GRAB POINT TOOL ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION (Base: 90 degrees):
+----------------------------------------
+  Point A (75,260): BOLT - 90.8% confidence, 27px from tool center
+  Point B (243,280): No tool assigned
+  Point C (410,155): BOLT - 89.3% confidence, 58px from tool center
+  Point D (500,300): WRENCH - 93.3% confidence, 36px from tool center
+
+SECOND POSITION (Base: 40 degrees):
+----------------------------------------
+  Point E (260,240): HAMMER - 92.3% confidence, 75px from tool center
+  Point F (300,155): BOLT - 89.9% confidence, 29px from tool center
+  Point G (425,420): PLIER - 97.4% confidence, 152px from tool center
+
+THIRD POSITION (Base: 1 degree):
+----------------------------------------
+  Point H (160,300): MEASURING TAPE - 78.3% confidence, 102px from tool center
+  Point I (470,140): No tool assigned
+
+===========================================================================
+TOOL TO GRAB POINT MAPPING (BEST LOCATION):
+----------------------------------------
+  BOLT            → Point A (initial position)
+      Confidence: 90.8%, Distance: 27px
+      Also available at 2 other location(s)
+  HAMMER          → Point E (second position)
+      Confidence: 92.3%, Distance: 75px
+  MEASURING TAPE  → Point H (third position)
+      Confidence: 78.3%, Distance: 102px
+  PLIER           → Point G (second position)
+      Confidence: 97.4%, Distance: 152px
+  WRENCH          → Point D (initial position)
+      Confidence: 93.3%, Distance: 36px
+
+===========================================================================
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (3 locations):
+  ⭐ Point A: 90.8% (initial position)
+    Point F: 89.9% (second position)
+    Point C: 89.3% (initial position)
+
+HAMMER (1 location):
+  ⭐ Point E: 92.3% (second position)
+
+MEASURING TAPE (1 location):
+  ⭐ Point H: 78.3% (third position)
+
+PLIER (1 location):
+  ⭐ Point G: 97.4% (second position)
+
+WRENCH (1 location):
+  ⭐ Point D: 93.3% (initial position)
+
+===========================================================================
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 3 locations:
+  ⭐ Point A (initial position)
+    Point F (second position)
+    Point C (initial position)
+  Will fetch from: Point A (highest confidence)
+
+When user requests 'hammer':
+  Will fetch from: Point E (Second Position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (Third Position)
+
+When user requests 'plier':
+  Will fetch from: Point G (Second Position)
+
+When user requests 'wrench':
+  Will fetch from: Point D (Initial Position)
+
+===========================================================================
+NOTES:
+----------------------------------------
+- Points B, I are empty and available for new tools
+- Duplicate tools found: BOLT (3)
+- Some tools are far from grab points: G (152px)
+  Consider adjusting grab point positions or moving tools closer
+- All assignments have good confidence (>70%)
+
+- Total unique tool types: 5
+- Total tools (including duplicates): 7
+
+DUPLICATE TOOL TRACKING:
+The garage assistant will:
+  1. Fetch from highest confidence location first
+  2. Track which locations have been fetched
+  3. Automatically select next best location
+  4. Show remaining inventory after each fetch
+
+===========================================================================

@@ -1,0 +1,25 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: third_position
+Base Servo Angle: 1°
+Image File: third_position.jpg
+Timestamp: 2025-12-10 17:04:15
+Total Objects Detected: 2
+============================================================
+
+DETECTED OBJECTS:
+----------------------------------------
+Object #1:
+  Class: Measuring Tape
+  Confidence: 83.1%
+  Bounding Box: (74, 272, 372, 445)
+  Center Coordinates: (223.0, 358.5)
+  Size: 298x173 pixels
+------------------------------
+Object #2:
+  Class: Screwdriver
+  Confidence: 81.5%
+  Bounding Box: (303, 0, 544, 294)
+  Center Coordinates: (423.5, 147.0)
+  Size: 241x294 pixels
+------------------------------
