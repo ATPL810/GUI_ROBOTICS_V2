@@ -7,3 +7,12 @@ numpy
 Arm_Lib
 pyserial 
 tkinter
+
+# for voice recognition
+# the offline model
+vosk 
+pyaudio
+pyttsx3
+
+# For GUI
+PyQt5
