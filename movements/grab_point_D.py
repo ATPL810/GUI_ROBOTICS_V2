@@ -1,15 +1,14 @@
 import time
 
-def grab_point_D(arm, tool_type="yellow_wrench"):
+def grab_point_D(arm, tool_type="wrench"):
     """Grabbing point D - Multiple tools"""
     print(f"Starting Grab Point D - {tool_type}")
     
     # Define grip force for each tool
     grip_forces = {
-        "yellow_wrench": 153,
+        "wrench": 153,
         "screwdriver": 165,
         "hammer": 169,
-        "spanner": 176
     }
     
     grip_force = grip_forces.get(tool_type, 153)  # default to yellow_wrench
