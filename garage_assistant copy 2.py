@@ -45,6 +45,9 @@ class GarageAssistant:
         
         # NEW: Show duplicates summary
         self.show_duplicates_summary()
+
+        # DEBUG: Check parsing
+        self.debug_parsing()
     
     def initialize_arm(self):
         """Initialize the robot arm"""
@@ -147,137 +150,150 @@ class GarageAssistant:
         return tool_mapping, tool_locations
     
     def parse_all_tool_locations(self):
-        """NEW: Parse ALL tool locations including duplicates from master report"""
+        """FIXED: Parse ALL tool locations including duplicates"""
         print("\n🔍 Parsing ALL tool locations (including duplicates)...")
         
         all_locations = {}
         
         with open(self.master_report_path, 'r') as f:
             content = f.read()
+        
+        # METHOD 1: Try to parse from "ALL TOOL LOCATIONS" section first
+        if "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" in content:
+            print("✓ Using ALL TOOL LOCATIONS section")
             
-            # Parse GRAB POINT TOOL ASSIGNMENTS section for ALL assignments
-            if "GRAB POINT TOOL ASSIGNMENTS:" in content:
-                print("✓ Found GRAB POINT TOOL ASSIGNMENTS section")
-                assignments_section = content.split("GRAB POINT TOOL ASSIGNMENTS:")[1]
-                assignments_section = assignments_section.split("=")[0] if "=" in assignments_section else assignments_section
-                
-                # Parse each line
-                lines = assignments_section.strip().split('\n')
-                
-                matches_found = 0
-                for line in lines:
-                    line = line.strip()
-                    
-                    # Skip empty lines and section headers
-                    if not line or line.startswith("---") or line.startswith("INITIAL") or line.startswith("SECOND") or line.startswith("THIRD"):
-                        continue
-                    
-                    # Check if it's a valid tool line (contains "Point" and a letter)
-                    if "Point" in line and any(letter in line for letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']):
-                        
-                        # Skip "No tool assigned" lines
-                        if "No tool assigned" in line:
-                            print(f"  Skipping: {line[:50]}...")
-                            continue
-                        
-                        print(f"  Parsing line: {line}")
-                        
-                        # Try to extract point letter
-                        point_match = re.search(r'Point\s+([A-I])', line)
-                        if not point_match:
-                            continue
-                        
-                        point_letter = point_match.group(1)
-                        
-                        # Extract tool name and confidence - handle your exact format
-                        # Pattern for: "Point A (75,260): BOLT - 90.6% confidence, 12px from tool center"
-                        pattern = r'Point\s+[A-I]\s+\([^)]+\):\s*([A-Z\s]+)\s*-\s*([\d.]+)%'
-                        match = re.search(pattern, line)
-                        
-                        if match:
-                            tool_name = match.group(1).strip().lower()
-                            confidence = float(match.group(2))
-                            
-                            print(f"    ✓ Found: Point {point_letter} = {tool_name} ({confidence}%)")
-                            
-                            if tool_name not in all_locations:
-                                all_locations[tool_name] = []
-                            
-                            all_locations[tool_name].append({
-                                "point": point_letter,
-                                "confidence": confidence / 100,
-                                "position": self.get_position_from_point(point_letter)
-                            })
-                            
-                            matches_found += 1
-                        else:
-                            print(f"    ✗ Could not parse: {line[:50]}...")
-                
-                print(f"\nTotal matches found: {matches_found}")
-                
-                # If no matches found with GRAB POINT section, try ALL TOOL LOCATIONS section
-                if matches_found == 0 and "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" in content:
-                    print("\nTrying ALL TOOL LOCATIONS section instead...")
-                    all_locations_section = content.split("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")[1]
-                    all_locations_section = all_locations_section.split("=")[0] if "=" in all_locations_section else all_locations_section
-                    
-                    lines = all_locations_section.strip().split('\n')
-                    
-                    for line in lines:
-                        line = line.strip()
-                        
-                        # Look for lines with tool names and points
-                        if "⭐" in line or "Point" in line:
-                            # Pattern for: "⭐ Point F: 91.4% (second position)"
-                            pattern = r'[⭐•]\s*Point\s+([A-I]):\s*([\d.]+)%'
-                            match = re.search(pattern, line)
-                            
-                            if match:
-                                point_letter = match.group(1)
-                                confidence = float(match.group(2))
-                                
-                                # Get tool name from previous lines
-                                tool_name = None
-                                # Look backward for tool name (like "BOLT (3 locations):")
-                                for i in range(len(lines)):
-                                    if lines[i].strip() == line:
-                                        # Look at previous non-empty lines for tool name
-                                        for j in range(i-1, max(-1, i-5), -1):
-                                            prev_line = lines[j].strip()
-                                            if prev_line and '(' in prev_line and ')' in prev_line:
-                                                # Extract tool name from "BOLT (3 locations):"
-                                                tool_match = re.search(r'([A-Z\s]+)\s*\(', prev_line)
-                                                if tool_match:
-                                                    tool_name = tool_match.group(1).strip().lower()
-                                                    break
-                                        break
-                                
-                                if tool_name:
-                                    print(f"    ✓ Found in ALL LOCATIONS: {tool_name} at Point {point_letter} ({confidence}%)")
-                                    
-                                    if tool_name not in all_locations:
-                                        all_locations[tool_name] = []
-                                    
-                                    all_locations[tool_name].append({
-                                        "point": point_letter,
-                                        "confidence": confidence / 100,
-                                        "position": self.get_position_from_point(point_letter)
-                                    })
-                                    matches_found += 1
+            # Extract the section
+            start_idx = content.find("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
+            section_end = content.find("=" * 75, start_idx)
+            if section_end == -1:
+                section_end = content.find("ROBOT ACTION PLAN", start_idx)
             
-            else:
-                print("✗ ERROR: GRAB POINT TOOL ASSIGNMENTS section not found!")
-                return {}
+            section = content[start_idx:section_end]
+            lines = section.split('\n')
+            
+            current_tool = None
+            
+            for line in lines:
+                line = line.strip()
+                
+                # Skip empty lines and section header
+                if not line or "ALL TOOL LOCATIONS" in line or line.startswith("---"):
+                    continue
+                
+                # Look for tool header: "BOLT (3 locations):"
+                if '(' in line and ')' in line and ':' in line:
+                    # Extract tool name and count
+                    tool_match = re.search(r'([A-Z\s]+)\s*\((\d+)\s*locations?\):', line)
+                    if tool_match:
+                        current_tool = tool_match.group(1).strip().lower()
+                        location_count = int(tool_match.group(2))
+                        print(f"\nFound tool: {current_tool.upper()} ({location_count} locations)")
+                        if current_tool not in all_locations:
+                            all_locations[current_tool] = []
+                    continue
+                
+                # Look for point lines (with or without star)
+                if current_tool and ('Point' in line or '⭐' in line or '•' in line):
+                    # Pattern for: "⭐ Point F: 91.4% (second position)" or "  Point A: 90.6% (initial position)"
+                    pattern = r'[⭐•]?\s*Point\s+([A-I]):\s*([\d.]+)%'
+                    match = re.search(pattern, line)
+                    
+                    if match:
+                        point_letter = match.group(1)
+                        confidence = float(match.group(2))
+                        
+                        # Get position from parentheses if available
+                        position = self.get_position_from_point(point_letter)
+                        pos_match = re.search(r'\(([^)]+)\)', line)
+                        if pos_match:
+                            position_str = pos_match.group(1).lower()
+                            if 'initial' in position_str:
+                                position = "initial_position"
+                            elif 'second' in position_str:
+                                position = "second_position"
+                            elif 'third' in position_str:
+                                position = "third_position"
+                        
+                        print(f"  ✓ Point {point_letter}: {confidence}% ({position})")
+                        
+                        all_locations[current_tool].append({
+                            "point": point_letter,
+                            "confidence": confidence / 100,
+                            "position": position
+                        })
+        
+        # METHOD 2: If still empty or missing tools, try GRAB POINT section
+        if not all_locations:
+            print("\nNo tools in ALL TOOL LOCATIONS, trying GRAB POINT section...")
+            all_locations = self.parse_from_grab_point_section(content)
         
         # Sort each tool's locations by confidence (highest first)
         for tool_name in all_locations:
             all_locations[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
         
         print(f"\n✅ Successfully parsed {len(all_locations)} unique tool types:")
+        total_tools = 0
         for tool_name, locations in all_locations.items():
+            total_tools += len(locations)
             print(f"  {tool_name.upper()}: {len(locations)} location(s)")
             for loc in locations:
                 print(f"    • Point {loc['point']}: {loc['confidence']*100:.1f}% ({loc['position']})")
+        
+        print(f"Total tools (including duplicates): {total_tools}")
+        return all_locations
+
+    def parse_from_grab_point_section(self, content):
+        """Parse from GRAB POINT TOOL ASSIGNMENTS section"""
+        all_locations = {}
+        
+        if "GRAB POINT TOOL ASSIGNMENTS:" not in content:
+            return all_locations
+        
+        print("Parsing from GRAB POINT TOOL ASSIGNMENTS...")
+        
+        assignments_section = content.split("GRAB POINT TOOL ASSIGNMENTS:")[1]
+        if "=" in assignments_section:
+            assignments_section = assignments_section.split("=")[0]
+        
+        lines = assignments_section.strip().split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip empty lines and section headers
+            if not line or line.startswith("---") or "POSITION" in line:
+                continue
+            
+            # Skip "No tool assigned" lines
+            if "No tool assigned" in line:
+                continue
+            
+            # Look for tool assignments: "Point A (75,260): BOLT - 90.6% confidence"
+            if "Point" in line and ':' in line and '-' in line:
+                # Extract point letter
+                point_match = re.search(r'Point\s+([A-I])', line)
+                if not point_match:
+                    continue
+                
+                point_letter = point_match.group(1)
+                
+                # Extract tool name and confidence
+                pattern = r':\s*([A-Z\s]+?)\s*-\s*([\d.]+)%'
+                match = re.search(pattern, line)
+                
+                if match:
+                    tool_name = match.group(1).strip().lower()
+                    confidence = float(match.group(2))
+                    
+                    if tool_name not in all_locations:
+                        all_locations[tool_name] = []
+                    
+                    all_locations[tool_name].append({
+                        "point": point_letter,
+                        "confidence": confidence / 100,
+                        "position": self.get_position_from_point(point_letter)
+                    })
+                    print(f"  ✓ From GRAB POINT: {tool_name} at Point {point_letter} ({confidence}%)")
         
         return all_locations
 
@@ -295,23 +311,50 @@ class GarageAssistant:
         self.tool_status_file = "data/tool_status.json"
         os.makedirs("data", exist_ok=True)
         
+        # DEBUG: Check if all_tool_locations is populated
+        print(f"\n🔍 DEBUG in load_tool_status():")
+        print(f"  self.all_tool_locations type: {type(self.all_tool_locations)}")
+        print(f"  self.all_tool_locations keys: {list(self.all_tool_locations.keys())}")
+        
         if os.path.exists(self.tool_status_file):
             try:
                 with open(self.tool_status_file, 'r') as f:
                     status = json.load(f)
                 print("   Loaded existing tool status")
+                
+                # Verify the loaded status has tools
+                if not status:
+                    print("   Warning: Loaded status is empty, will recreate")
+                    return self.create_new_tool_status()
+                
                 return status
-            except:
-                print("   Creating new tool status")
+            except Exception as e:
+                print(f"   Error loading tool status: {e}, creating new one")
+                return self.create_new_tool_status()
         
-        # Initialize new status
+        print("   Creating new tool status")
+        return self.create_new_tool_status()
+
+    def create_new_tool_status(self):
+        """Create new tool status from all_tool_locations"""
         status = {}
-        for tool_name, locations in self.all_tool_locations.items():
-            status[tool_name] = {
-                "available": [loc["point"] for loc in locations],
-                "fetched": [],
-                "next_available": locations[0]["point"] if locations else None
-            }
+        
+        if not self.all_tool_locations:
+            print("   WARNING: all_tool_locations is empty! Trying to parse again...")
+            # Try to parse again
+            self.all_tool_locations = self.parse_all_tool_locations()
+        
+        if self.all_tool_locations:
+            for tool_name, locations in self.all_tool_locations.items():
+                if locations:  # Only add if there are locations
+                    status[tool_name] = {
+                        "available": [loc["point"] for loc in locations],
+                        "fetched": [],
+                        "next_available": locations[0]["point"] if locations else None
+                    }
+            print(f"   Created status for {len(status)} tools")
+        else:
+            print("   ERROR: Cannot create tool status - no tools found!")
         
         self.save_tool_status(status)
         return status
@@ -758,6 +801,24 @@ class GarageAssistant:
         self.save_tool_status()
         print("✅ All tools reset to available!")
         self.list_available_tools()
+        
+    def debug_parsing(self):
+        """Debug what's happening with parsing"""
+        print("\n🔍 DEBUG: Checking parsing results...")
+        
+        print(f"1. self.tool_mapping keys: {list(self.tool_mapping.keys())}")
+        print(f"2. self.all_tool_locations type: {type(self.all_tool_locations)}")
+        print(f"3. self.all_tool_locations keys: {list(self.all_tool_locations.keys())}")
+        
+        if self.all_tool_locations:
+            print("\nDetails of all_tool_locations:")
+            for tool_name, locations in self.all_tool_locations.items():
+                print(f"  {tool_name}: {len(locations)} locations")
+                for loc in locations:
+                    print(f"    • Point {loc['point']} ({loc['confidence']*100:.1f}%)")
+        
+        print(f"\n4. self.tool_status type: {type(self.tool_status)}")
+        print(f"5. self.tool_status keys: {list(self.tool_status.keys())}")
 
 def main():
     """Main execution function"""
