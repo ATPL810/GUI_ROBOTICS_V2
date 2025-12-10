@@ -157,32 +157,127 @@ class GarageAssistant:
             
             # Parse GRAB POINT TOOL ASSIGNMENTS section for ALL assignments
             if "GRAB POINT TOOL ASSIGNMENTS:" in content:
+                print("✓ Found GRAB POINT TOOL ASSIGNMENTS section")
                 assignments_section = content.split("GRAB POINT TOOL ASSIGNMENTS:")[1]
-                assignments_section = assignments_section.split("=")[0]
+                assignments_section = assignments_section.split("=")[0] if "=" in assignments_section else assignments_section
                 
-                # Parse each line with pattern: "Point A (75,260): BOLT - 93.7% confidence"
+                # Parse each line
                 lines = assignments_section.strip().split('\n')
                 
+                matches_found = 0
                 for line in lines:
                     line = line.strip()
-                    match = re.search(r'Point\s+([A-I])\s+\([^)]+\):\s*([A-Z\s]+)\s*-\s*([\d.]+)%', line)
-                    if match:
-                        point_letter = match.group(1)
-                        tool_name = match.group(2).strip().lower()
-                        confidence = float(match.group(3))
+                    
+                    # Skip empty lines and section headers
+                    if not line or line.startswith("---") or line.startswith("INITIAL") or line.startswith("SECOND") or line.startswith("THIRD"):
+                        continue
+                    
+                    # Check if it's a valid tool line (contains "Point" and a letter)
+                    if "Point" in line and any(letter in line for letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']):
                         
-                        if tool_name not in all_locations:
-                            all_locations[tool_name] = []
+                        # Skip "No tool assigned" lines
+                        if "No tool assigned" in line:
+                            print(f"  Skipping: {line[:50]}...")
+                            continue
                         
-                        all_locations[tool_name].append({
-                            "point": point_letter,
-                            "confidence": confidence / 100,
-                            "position": self.get_position_from_point(point_letter)
-                        })
+                        print(f"  Parsing line: {line}")
+                        
+                        # Try to extract point letter
+                        point_match = re.search(r'Point\s+([A-I])', line)
+                        if not point_match:
+                            continue
+                        
+                        point_letter = point_match.group(1)
+                        
+                        # Extract tool name and confidence - handle your exact format
+                        # Pattern for: "Point A (75,260): BOLT - 90.6% confidence, 12px from tool center"
+                        pattern = r'Point\s+[A-I]\s+\([^)]+\):\s*([A-Z\s]+)\s*-\s*([\d.]+)%'
+                        match = re.search(pattern, line)
+                        
+                        if match:
+                            tool_name = match.group(1).strip().lower()
+                            confidence = float(match.group(2))
+                            
+                            print(f"    ✓ Found: Point {point_letter} = {tool_name} ({confidence}%)")
+                            
+                            if tool_name not in all_locations:
+                                all_locations[tool_name] = []
+                            
+                            all_locations[tool_name].append({
+                                "point": point_letter,
+                                "confidence": confidence / 100,
+                                "position": self.get_position_from_point(point_letter)
+                            })
+                            
+                            matches_found += 1
+                        else:
+                            print(f"    ✗ Could not parse: {line[:50]}...")
+                
+                print(f"\nTotal matches found: {matches_found}")
+                
+                # If no matches found with GRAB POINT section, try ALL TOOL LOCATIONS section
+                if matches_found == 0 and "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" in content:
+                    print("\nTrying ALL TOOL LOCATIONS section instead...")
+                    all_locations_section = content.split("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")[1]
+                    all_locations_section = all_locations_section.split("=")[0] if "=" in all_locations_section else all_locations_section
+                    
+                    lines = all_locations_section.strip().split('\n')
+                    
+                    for line in lines:
+                        line = line.strip()
+                        
+                        # Look for lines with tool names and points
+                        if "⭐" in line or "Point" in line:
+                            # Pattern for: "⭐ Point F: 91.4% (second position)"
+                            pattern = r'[⭐•]\s*Point\s+([A-I]):\s*([\d.]+)%'
+                            match = re.search(pattern, line)
+                            
+                            if match:
+                                point_letter = match.group(1)
+                                confidence = float(match.group(2))
+                                
+                                # Get tool name from previous lines
+                                tool_name = None
+                                # Look backward for tool name (like "BOLT (3 locations):")
+                                for i in range(len(lines)):
+                                    if lines[i].strip() == line:
+                                        # Look at previous non-empty lines for tool name
+                                        for j in range(i-1, max(-1, i-5), -1):
+                                            prev_line = lines[j].strip()
+                                            if prev_line and '(' in prev_line and ')' in prev_line:
+                                                # Extract tool name from "BOLT (3 locations):"
+                                                tool_match = re.search(r'([A-Z\s]+)\s*\(', prev_line)
+                                                if tool_match:
+                                                    tool_name = tool_match.group(1).strip().lower()
+                                                    break
+                                        break
+                                
+                                if tool_name:
+                                    print(f"    ✓ Found in ALL LOCATIONS: {tool_name} at Point {point_letter} ({confidence}%)")
+                                    
+                                    if tool_name not in all_locations:
+                                        all_locations[tool_name] = []
+                                    
+                                    all_locations[tool_name].append({
+                                        "point": point_letter,
+                                        "confidence": confidence / 100,
+                                        "position": self.get_position_from_point(point_letter)
+                                    })
+                                    matches_found += 1
+            
+            else:
+                print("✗ ERROR: GRAB POINT TOOL ASSIGNMENTS section not found!")
+                return {}
         
         # Sort each tool's locations by confidence (highest first)
         for tool_name in all_locations:
             all_locations[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
+        
+        print(f"\n✅ Successfully parsed {len(all_locations)} unique tool types:")
+        for tool_name, locations in all_locations.items():
+            print(f"  {tool_name.upper()}: {len(locations)} location(s)")
+            for loc in locations:
+                print(f"    • Point {loc['point']}: {loc['confidence']*100:.1f}% ({loc['position']})")
         
         return all_locations
 
