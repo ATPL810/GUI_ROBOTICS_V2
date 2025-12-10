@@ -525,7 +525,7 @@ class GarageAssistant:
     def interactive_mode(self):
         """Run in interactive mode with user input"""
         print("\n" + "=" * 70)
-        print("INTERACTIVE MODE")
+        print("INTERACTIVE MODE - WITH DUPLICATE TRACKING")
         print("=" * 70)
         
         # Show available tools
@@ -536,20 +536,23 @@ class GarageAssistant:
             print("GARAGE ASSISTANT MENU:")
             print("  1. 🔧 Fetch a tool")
             print("  2. 📋 List available tools")
-            print("  3. 🔄 Reset all tools (restock)")  # CHANGED THIS LINE
+            print("  3. 🔄 Reset all tools (restock)")
             print("  4. 🧪 Test grab point (dry run)")
             print("  5. 🏠 Return to home position")
-            print("  6. ❌ Exit")  # CHANGED FROM 5 TO 6
+            print("  6. ❌ Exit")
             print("-" * 40)
             
-            choice = input("\nEnter your choice (1-5): ").strip()
+            choice = input("\nEnter your choice (1-6): ").strip()
             
             if choice == "1":
-                # Fetch tool
+                # Fetch tool - UPDATED to use tool_status
                 print("\nAvailable tools:")
-                for tool_name in sorted(self.tool_mapping.keys()):
-                    grab_letter = self.tool_mapping[tool_name]
-                    print(f"  • {tool_name.upper():<15} (Point {grab_letter})")
+                for tool_name in sorted(self.tool_status.keys()):
+                    status = self.tool_status[tool_name]
+                    available_count = len(status["available"])
+                    if available_count > 0:
+                        count_text = f"({available_count} available)" if available_count > 1 else ""
+                        print(f"  • {tool_name.upper():<15} {count_text}")
                 
                 tool_name = input("\nWhich tool would you like? ").strip()
                 if tool_name:
@@ -559,19 +562,24 @@ class GarageAssistant:
                 # List tools
                 self.list_available_tools()
             
-            elif choice == "3":  # NEW RESET OPTION
+            elif choice == "3":
+                # Reset tools
                 confirm = input("\nAre you sure you want to reset all tools? (yes/no): ").strip().lower()
                 if confirm in ["yes", "y"]:
                     self.reset_tool_status()
             
             elif choice == "4":
+                # Test grab point (dry run)
+                self.test_grab_point_dry_run()
+            
+            elif choice == "5":
                 # Return to home
                 print("\n🏠 Returning to home position...")
                 self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
                 time.sleep(2)
                 print("✅ Arm at home position")
             
-            elif choice == "5":
+            elif choice == "6":
                 # Exit
                 print("\n🏠 Returning arm to home position...")
                 self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
@@ -581,7 +589,7 @@ class GarageAssistant:
             
             else:
                 print("❌ Invalid choice. Please try again.")
-    
+        
     def test_grab_point_dry_run(self):
         """Test a grab point without actually grabbing"""
         print("\n" + "=" * 70)
