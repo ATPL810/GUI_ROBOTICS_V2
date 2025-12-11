@@ -9,9 +9,17 @@ class ToolPromptDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("🤖 Fetch Tool")
-        self.dialog.geometry("400x400")
+        self.dialog.geometry("400x450")  # Slightly taller
         self.dialog.configure(bg="#1e1e2e")
         self.dialog.resizable(False, False)
+        
+        # Center the dialog
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (400 // 2)
+        y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (450 // 2)
+        self.dialog.geometry(f"+{x}+{y}")
         
         self.init_ui()
     
@@ -36,7 +44,8 @@ class ToolPromptDialog:
         self.tools_list = tk.Listbox(list_frame, bg="#313244", fg="#cdd6f4", 
                                     font=("Arial", 11), yscrollcommand=scrollbar.set,
                                     selectbackground="#585b70", selectforeground="#cdd6f4",
-                                    borderwidth=2, relief="solid", highlightthickness=0)
+                                    borderwidth=2, relief="solid", highlightthickness=0,
+                                    height=8)
         self.tools_list.pack(side=tk.LEFT, fill="both", expand=True)
         
         scrollbar.config(command=self.tools_list.yview)
@@ -66,6 +75,7 @@ class ToolPromptDialog:
                                   borderwidth=2, relief="solid")
         self.tool_input.pack(padx=20, pady=5, fill="x")
         self.tool_input.bind("<KeyRelease>", self.on_input_change)
+        self.tool_input.bind("<Return>", lambda e: self.on_ok())  # Enter key support
         
         # Buttons frame
         button_frame = tk.Frame(self.dialog, bg="#1e1e2e")
@@ -124,6 +134,5 @@ class ToolPromptDialog:
     
     def show(self):
         """Show dialog and wait for result"""
-        self.dialog.grab_set()
         self.parent.wait_window(self.dialog)
         return self.selected_tool
