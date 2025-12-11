@@ -81,7 +81,8 @@ class VoiceRecognitionSystem:
                 channels=1,
                 rate=16000,
                 input=True,
-                frames_per_buffer=8000
+                frames_per_buffer=8000,
+                input_device_index=3
             )
             
             self.recognizer = KaldiRecognizer(self.model, 16000)
