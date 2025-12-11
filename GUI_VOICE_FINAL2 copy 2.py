@@ -97,7 +97,7 @@ class VoiceRecognitionSystem:
             
             self.recognizer = KaldiRecognizer(self.model, 16000)
             
-            self.log("✅ Voice recognition ready!", "success")
+            self.log("Voice recognition ready!", "success")
             return True
             
         except Exception as e:
@@ -287,10 +287,10 @@ class RobotArmController:
             }
             
             self.go_to_initial_position()
-            self.log("✅ Robot arm initialized successfully")
+            self.log("Robot arm initialized successfully")
             
         except Exception as e:
-            self.log(f"❌ Failed to initialize robot arm: {e}", "error")
+            self.log(f" Failed to initialize robot arm: {e}", "error")
             raise
     
     def log(self, message, level="info"):
@@ -349,7 +349,7 @@ class RobotArmController:
         self.log("Moving to home position...")
         self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
         time.sleep(2)
-        self.log("✅ At home position")
+        self.log("At home position")
 
 # ============================================
 # CAMERA SYSTEM
@@ -566,7 +566,7 @@ class SnapshotSystem:
             
             self.save_summary_report()
             
-            self.log("✅ Automatic snapshot sequence COMPLETE!", "success")
+            self.log("Automatic snapshot sequence COMPLETE!", "success")
             total_detections = sum(len(snap['detections']) for snap in self.all_snapshots)
             self.log(f"Snapshots taken: {len(self.all_snapshots)}", "info")
             self.log(f"Total objects detected: {total_detections}", "info")
@@ -574,7 +574,7 @@ class SnapshotSystem:
             return self.output_dir
             
         except Exception as e:
-            self.log(f"❌ Error during snapshot sequence: {e}", "error")
+            self.log(f"Error during snapshot sequence: {e}", "error")
             raise
     
     def wait_for_stabilization(self, seconds, position_name):
@@ -1172,7 +1172,7 @@ class GrabSystem:
             available_count = sum(1 for loc in locations if not loc.get("fetched", False))
             total_count = len(locations)
             
-            status = "✅" if available_count > 0 else "⛔"
+            status = "+" if available_count > 0 else "-"
             
             if total_count > 1:
                 self.log(f"  {status} {tool_name.upper():<15} → {available_count}/{total_count} available", "info")
@@ -1199,7 +1199,7 @@ class AnalysisSystem:
     
     def analyze_grab_points(self, snapshot_folder):
         """Run complete grab point analysis with duplicate handling"""
-        self.log("🔍 Starting grab point analysis...", "info")
+        self.log("Starting grab point analysis...", "info")
         self.snapshot_folder = snapshot_folder
         
         self.load_grab_points()
@@ -1209,7 +1209,7 @@ class AnalysisSystem:
         self.save_json_mapping()
         report_path = self.generate_master_report_with_duplicates()
         
-        self.log("✅ Grab point analysis COMPLETE!", "success")
+        self.log("Grab point analysis COMPLETE!", "success")
         return report_path
     
     def load_grab_points(self):
@@ -1622,7 +1622,7 @@ class ToolPromptDialog:
         
         self.ok_button = tk.Button(
             button_frame,
-            text="✅ Fetch",
+            text="Fetch",
             command=self.on_ok,
             bg="#585b70",
             fg="#cdd6f4",
@@ -1634,7 +1634,7 @@ class ToolPromptDialog:
         
         self.cancel_button = tk.Button(
             button_frame,
-            text="❌ Cancel",
+            text="Cancel",
             command=self.on_cancel,
             bg="#585b70",
             fg="#cdd6f4",
@@ -1680,7 +1680,7 @@ class ToolPromptDialog:
 class MainWindow:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🏗️ Garage Assistant Pro")
+        self.root.title("GUIDO Garage Assistant")
         self.root.geometry("1100x700")
         self.root.configure(bg="#1e1e2e")
         
@@ -1731,7 +1731,7 @@ class MainWindow:
         # Camera display
         camera_frame = tk.LabelFrame(
             left_panel,
-            text="🎥 Live Camera Feed",
+            text="Live Camera Feed",
             font=("Arial", 12, "bold"),
             fg="#89b4fa",
             bg="#1e1e2e",
@@ -1751,7 +1751,7 @@ class MainWindow:
         # Control buttons
         control_frame = tk.LabelFrame(
             left_panel,
-            text="⚙️ System Controls",
+            text="System Controls",
             font=("Arial", 12, "bold"),
             fg="#89b4fa",
             bg="#1e1e2e",
@@ -1763,7 +1763,7 @@ class MainWindow:
         # Voice button
         self.voice_button = tk.Button(
             control_frame,
-            text="🎤 Enable Voice",
+            text="Enable Voice",
             command=self.toggle_voice_recognition,
             bg="#74c7ec",
             fg="#1e1e2e",
@@ -1776,7 +1776,7 @@ class MainWindow:
         # Scan button
         self.scan_button = tk.Button(
             control_frame,
-            text="🔍 Start Scan & Analysis",
+            text=" Scan & Analysis",
             command=self.start_scan,
             bg="#a6e3a1",
             fg="#1e1e2e",
@@ -1789,7 +1789,7 @@ class MainWindow:
         # Home button
         self.home_button = tk.Button(
             control_frame,
-            text="🏠 Go Home",
+            text="Go Home",
             command=self.go_home,
             bg="#585b70",
             fg="#cdd6f4",
@@ -1802,7 +1802,7 @@ class MainWindow:
         # Fetch button
         self.fetch_prompt_button = tk.Button(
             control_frame,
-            text="🤖 Fetch Tool...",
+            text="Fetch Tool...",
             command=self.prompt_for_tool,
             bg="#cba6f7",
             fg="#1e1e2e",
@@ -1815,7 +1815,7 @@ class MainWindow:
         # Clear log button
         clear_log_btn = tk.Button(
             control_frame,
-            text="🗑️ Clear Log",
+            text="Clear Log",
             command=self.clear_log,
             bg="#585b70",
             fg="#cdd6f4",
@@ -1828,7 +1828,7 @@ class MainWindow:
         # Exit button
         exit_button = tk.Button(
             control_frame,
-            text="🚪 Exit",
+            text=" Exit",
             command=self.on_closing,
             bg="#f38ba8",
             fg="#1e1e2e",
@@ -1871,7 +1871,7 @@ class MainWindow:
         # Tools list
         tools_frame = tk.LabelFrame(
             left_panel,
-            text="🛠 Mapped Tools",
+            text="Mapped Tools",
             font=("Arial", 12, "bold"),
             fg="#89b4fa",
             bg="#1e1e2e",
@@ -1897,7 +1897,7 @@ class MainWindow:
         # Logger
         logger_frame = tk.LabelFrame(
             right_panel,
-            text="📋 System Logger",
+            text="System Logger",
             font=("Arial", 12, "bold"),
             fg="#89b4fa",
             bg="#1e1e2e",
@@ -1920,7 +1920,7 @@ class MainWindow:
         # System info
         info_frame = tk.LabelFrame(
             right_panel,
-            text="ℹ️ System Information",
+            text="System Information",
             font=("Arial", 12, "bold"),
             fg="#89b4fa",
             bg="#1e1e2e",
@@ -1946,24 +1946,24 @@ class MainWindow:
         self.info_label.pack(fill=tk.X, padx=10, pady=10)
         
         # Add initial log message
-        self.log("🏗️ Garage Assistant Pro Initializing...", "system")
+        self.log("Guido Garage Assistant Initializing...", "system")
     
     def initialize_systems(self):
         """Initialize all systems - called AFTER GUI is set up"""
         try:
-            self.log("🚀 Initializing systems...", "system")
+            self.log("Initializing systems...", "system")
             
-            self.log("🤖 Initializing robot arm...", "info")
+            self.log("Initializing robot arm...", "info")
             self.arm_controller = RobotArmController(log_callback=self.log)
             
-            self.log("📷 Starting camera...", "info")
+            self.log("Starting camera...", "info")
             self.camera_system = CameraSystem(
                 log_callback=self.log,
                 frame_callback=self.update_camera_frame
             )
             self.camera_system.start()
             
-            self.log("🎤 Initializing voice recognition...", "info")
+            self.log("Initializing voice recognition...", "info")
             self.voice_system = VoiceRecognitionSystem(log_callback=self.log)
             self.voice_system.set_command_callback(self.handle_voice_command)
             
@@ -1971,11 +1971,11 @@ class MainWindow:
             self.analysis_system = AnalysisSystem(self.log)
             self.grab_system = GrabSystem(self.arm_controller, self.snapshot_system, self.camera_system, self.log)
             
-            self.log("✅ All systems initialized successfully!", "success")
+            self.log("All systems initialized successfully!", "success")
             self.update_info("Arm: Connected ✓", "Camera: Running ✓", "Voice: Ready ✓")
             
         except Exception as e:
-            self.log(f"❌ Failed to initialize systems: {e}", "error")
+            self.log(f"Failed to initialize systems: {e}", "error")
     
     def log(self, message, level="info"):
         """Log message to logger and console"""
@@ -2056,12 +2056,12 @@ class MainWindow:
             self.log("Voice system not initialized!", "error")
             return
         
-        self.log("🎤 Enabling voice recognition...", "system")
+        self.log("Enabling voice recognition...", "system")
         self.voice_enabled = True
         
         # Update UI
         self.voice_button.config(
-            text="🔴 Disable Voice",
+            text="Disable Voice",
             bg="#f38ba8",
             fg="#1e1e2e"
         )
@@ -2076,7 +2076,7 @@ class MainWindow:
         self.voice_thread.daemon = True
         self.voice_thread.start()
         
-        self.log("✅ Voice recognition enabled. Speak commands now.", "success")
+        self.log("Voice recognition enabled. Speak commands now.", "success")
         self.update_info("Voice Status: Listening ✓")
     
     def disable_voice_recognition(self):
@@ -2100,12 +2100,12 @@ class MainWindow:
             self.voice_system.voice_enabled = False
             self.voice_system.stop()
         
-        self.log("✅ Voice recognition disabled.", "success")
+        self.log("Voice recognition disabled.", "success")
         self.update_info("Voice Status: Disabled")
     
     def handle_voice_command(self, tool_name):
         """Handle voice command received"""
-        self.log(f"🎤 Voice command received: Fetch {tool_name}", "system")
+        self.log(f"Voice command received: Fetch {tool_name}", "system")
         
         if self.scanning:
             self.log("Cannot process voice command during scan!", "warning")
@@ -2151,7 +2151,7 @@ class MainWindow:
             success = self.grab_system.fetch_tool(tool_name, self.root, skip_confirmation=True)
             
             if success:
-                self.log(f"✅ Successfully fetched {tool_name.upper()}!", "success")
+                self.log(f"Successfully fetched {tool_name.upper()}!", "success")
                 self.update_info(
                     f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
                     f"Last Tool: {tool_name.upper()}"
@@ -2162,10 +2162,10 @@ class MainWindow:
                 self.voice_system.speak(confirmation_msg)
                 
             else:
-                self.log(f"❌ Failed to fetch {tool_name.upper()}", "error")
+                self.log(f"Failed to fetch {tool_name.upper()}", "error")
                 
         except Exception as e:
-            self.log(f"❌ Fetch error: {e}", "error")
+            self.log(f"Fetch error: {e}", "error")
         
         finally:
             self.fetching = False
@@ -2179,7 +2179,7 @@ class MainWindow:
     def prompt_for_tool(self):
         """Prompt user for which tool to fetch"""
         if not self.tool_mapping:
-            self.log("❌ No tool mapping available! Please run scan first.", "error")
+            self.log("No tool mapping available! Please run scan first.", "error")
             return
         
         dialog = ToolPromptDialog(self.root, self.tool_mapping)
@@ -2216,16 +2216,16 @@ class MainWindow:
             success = self.grab_system.fetch_tool(tool_name, self.root)
             
             if success:
-                self.log(f"✅ Successfully fetched {tool_name.upper()}!", "success")
+                self.log(f"Successfully fetched {tool_name.upper()}!", "success")
                 self.update_info(
                     f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
                     f"Last Tool: {tool_name.upper()}"
                 )
             else:
-                self.log(f"❌ Failed to fetch {tool_name.upper()}", "error")
+                self.log(f"Failed to fetch {tool_name.upper()}", "error")
                 
         except Exception as e:
-            self.log(f"❌ Fetch error: {e}", "error")
+            self.log(f"Fetch error: {e}", "error")
         
         finally:
             self.fetching = False
@@ -2244,6 +2244,10 @@ class MainWindow:
         if self.scanning:
             self.log("Scan already in progress!", "warning")
             return
+        if os.path.exists("data/fetched_tools.json"):
+            os.remove("data/fetched_tools.json")
+            print("Removed existing fetched_tools.json file.")
+            self.log("Removed existing fetched_tools.json file.", "info")
         
         self.scanning = True
         self.scan_button.config(state=tk.DISABLED)
@@ -2265,25 +2269,25 @@ class MainWindow:
             self.log("STARTING AUTOMATIC SCAN SEQUENCE", "system")
             self.log("="*50, "system")
             
-            self.log("📸 Step 1: Taking snapshots...", "info")
+            self.log("Step 1: Taking snapshots...", "info")
             self.update_progress(10)
             
             self.current_snapshot_folder = self.snapshot_system.take_snapshots_sequence()
             self.update_progress(50)
             
-            self.log("\n🔍 Step 2: Analyzing grab points...", "info")
+            self.log("\nStep 2: Analyzing grab points...", "info")
             report_path = self.analysis_system.analyze_grab_points(self.current_snapshot_folder)
             self.update_progress(80)
             
-            self.log("\n🗺️ Step 3: Loading tool mapping...", "info")
+            self.log("\nStep 3: Loading tool mapping...", "info")
             self.tool_mapping = self.grab_system.load_mapping(report_path)
             self.update_progress(90)
             
             self.root.after(0, self.update_tools_list)
             self.update_progress(100)
             
-            self.log("\n✅ SCAN COMPLETE!", "success")
-            self.log(f"📊 Tools mapped: {len(self.tool_mapping)}", "success")
+            self.log("\nSCAN COMPLETE!", "success")
+            self.log(f"Tools mapped: {len(self.tool_mapping)}", "success")
             
             self.update_info(
                 f"Last Scan: {datetime.now().strftime('%H:%M:%S')}",
@@ -2291,7 +2295,7 @@ class MainWindow:
             )
             
         except Exception as e:
-            self.log(f"❌ Scan failed: {e}", "error")
+            self.log(f"Scan failed: {e}", "error")
         
         finally:
             self.scanning = False
@@ -2343,9 +2347,9 @@ class MainWindow:
         self.log("Moving arm to home position...", "info")
         try:
             self.arm_controller.go_to_home()
-            self.log("✅ Arm at home position", "success")
+            self.log("Arm at home position", "success")
         except Exception as e:
-            self.log(f"❌ Failed to go home: {e}", "error")
+            self.log(f"Failed to go home: {e}", "error")
     
     def update_info(self, *args):
         """Update system information"""
@@ -2381,7 +2385,7 @@ class MainWindow:
         except:
             pass
         
-        self.log("✅ Goodbye!", "success")
+        self.log("Goodbye!", "success")
         self.root.quit()
         self.root.destroy()
 
@@ -2396,12 +2400,6 @@ def main():
     os.makedirs("movements", exist_ok=True)
     os.makedirs("data", exist_ok=True)
 
-    # os.remove("data/fetched_tools.json") if os.path.exists("data/fetched_tools.json") else None
-
-    if os.path.exists("data/fetched_tools.json"):
-        os.remove("data/fetched_tools.json")
-        print("Removed existing fetched_tools.json file.")
-    
     # Check for grab point scripts
     movements_dir = "movements"
     if not os.path.exists(movements_dir):
