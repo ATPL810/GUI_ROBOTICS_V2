@@ -154,7 +154,7 @@ class VoiceRecognitionSystem:
     
     def process_voice_command(self, text):
         """Process a voice command - MODIFIED to skip confirmation"""
-        self.log(f"Voice command: '{text}'", "info")
+        # self.log(f"Voice command: '{text}'", "info")
         
         text_lower = text.lower()
         
@@ -2395,6 +2395,12 @@ def main():
     os.makedirs("config", exist_ok=True)
     os.makedirs("movements", exist_ok=True)
     os.makedirs("data", exist_ok=True)
+
+    # os.remove("data/fetched_tools.json") if os.path.exists("data/fetched_tools.json") else None
+
+    if os.path.exists("data/fetched_tools.json"):
+        os.remove("data/fetched_tools.json")
+        print("Removed existing fetched_tools.json file.")
     
     # Check for grab point scripts
     movements_dir = "movements"
