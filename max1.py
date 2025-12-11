@@ -290,3 +290,31 @@ finally:
     cv2.destroyAllWindows()
     print("\n✅ Camera released")
     print("🎉 Thank you for using the ULTRA-OPTIMIZED YOLO11 Tool Detector!")
+
+
+
+    """"/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/.venv/bin/python /home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py
+Traceback (most recent call last):
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 1899, in initialize_systems
+    self.log("🚀 Initializing Garage Assistant Pro...", "system")
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 1941, in log
+    self.logger_text.insert(tk.END, formatted_message)
+    ^^^^^^^^^^^^^^^^
+AttributeError: 'MainWindow' object has no attribute 'logger_text'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 2351, in <module>
+    main()
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 2347, in main
+    window = MainWindow()
+             ^^^^^^^^^^^^
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 1709, in __init__
+    self.initialize_systems()
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 1923, in initialize_systems
+    self.log(f"❌ Failed to initialize systems: {e}", "error")
+  File "/home/pi/Desktop/Gui/GUI_ROBOTICS_V2/GUI_VOICE_FINAL.py", line 1941, in log
+    self.logger_text.insert(tk.END, formatted_message)
+    ^^^^^^^^^^^^^^^^
+AttributeError: 'MainWindow' object has no attribute 'logger_text'"""
