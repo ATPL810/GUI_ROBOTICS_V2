@@ -24,6 +24,9 @@ from vosk import Model, KaldiRecognizer
 # ============================================
 # VOICE RECOGNITION SYSTEM (Updated from Voice_Commands.py)
 # ============================================
+# ============================================
+# VOICE RECOGNITION SYSTEM (FULLY UPDATED from Voice_Commands.py)
+# ============================================
 class VoiceRecognitionSystem:
     def __init__(self, log_callback=None):
         self.log_callback = log_callback
@@ -94,7 +97,7 @@ class VoiceRecognitionSystem:
             return False
     
     def speak(self, text):
-        """Make the robot speak through speakers - UPDATED"""
+        """Make the robot speak through speakers - FROM Voice_Commands.py"""
         if not text or self.is_speaking:
             return
         
@@ -106,19 +109,56 @@ class VoiceRecognitionSystem:
             self.tts.runAndWait()
         except Exception as e:
             self.log(f"Speaking error: {e}", "error")
+            # If speech fails, at least print it
+            self.log(f"[SPEAKING]: {text}", "info")
+            time.sleep(len(text.split()) * 0.3)  # Simulate speaking time
         
         self.is_speaking = False
     
     def get_fetching_message(self, tool):
-        """Generate fetching message - ALWAYS USED when fetching any tool"""
+        """Generate fetching message - ALWAYS USED when fetching any tool - FROM Voice_Commands.py"""
         return f"Fetching the {tool} for you!"
     
     def get_confirmation_message(self, tool):
-        """Generate confirmation message after fetching"""
+        """Generate confirmation message after fetching - FROM Voice_Commands.py"""
         return f"Here is your {tool}! What else can I get for you?"
     
+    def listen_continuously(self):
+        """Always listen in background - FROM Voice_Commands.py"""
+        if not self.initialize_voice():
+            self.log("Failed to initialize voice recognition", "error")
+            return
+        
+        self.log("🔊 Always listening...", "success")
+        
+        while self.running and self.voice_enabled:
+            try:
+                # Don't process audio while robot is speaking
+                if self.is_speaking:
+                    time.sleep(0.1)
+                    continue
+                
+                data = self.stream.read(4000, exception_on_overflow=False)
+                
+                if self.recognizer.AcceptWaveform(data):
+                    result = json.loads(self.recognizer.Result())
+                    text = result.get('text', '').strip()
+                    
+                    if text and len(text) > 2:
+                        current_time = time.time()
+                        # Debounce: ignore if too soon after last command
+                        if current_time - self.last_command_time > 1.5:
+                            self.process_voice_command(text)
+                            self.last_command_time = current_time
+                
+                time.sleep(0.01)
+                
+            except Exception as e:
+                self.log(f"Voice recognition error: {e}", "error")
+                time.sleep(1)
+    
     def find_tool(self, text):
-        """Find which tool was mentioned - UPDATED"""
+        """Find which tool was mentioned - FROM Voice_Commands.py"""
         text_lower = text.lower()
         
         # Check each tool's keywords
@@ -139,9 +179,7 @@ class VoiceRecognitionSystem:
         return None
     
     def process_voice_command(self, text):
-        """Process a voice command - UPDATED from Voice_Commands.py"""
-        self.log(f"Voice command: '{text}'", "info")
-        
+        """Process a voice command - FULLY FROM Voice_Commands.py"""
         text_lower = text.lower()
         
         # Check for help first
@@ -157,6 +195,16 @@ class VoiceRecognitionSystem:
             # If a tool is found, fetch it directly
             fetching_msg = self.get_fetching_message(tool)
             self.speak(fetching_msg)
+            
+            # Call the callback to actually fetch the tool
+            if self.command_callback:
+                self.command_callback(tool)
+            
+            # Simulate robot action (this will be overridden by actual robot movement)
+            self.log(f"\n⚙️ [ACTION] Robot is physically fetching: {tool}", "info")
+            
+            # The confirmation message should be spoken AFTER the robot completes the fetch
+            # We'll let the main system handle this part
             return tool
         
         # Check for greeting if no tool or help command was found
@@ -171,42 +219,15 @@ class VoiceRecognitionSystem:
         return None
     
     def run(self):
-        """Main voice recognition loop - UPDATED"""
+        """Main voice recognition loop - UPDATED for continuous listening"""
         self.running = True
-        
-        if not self.initialize_voice():
-            self.log("Failed to initialize voice recognition", "error")
-            return
         
         self.log("🔊 Voice recognition started", "success")
         welcome_msg = "Hello! I am your Arrange Assistant. I can fetch tools for you. Just say the name of a tool you need, like 'wrench' or 'hammer'."
         self.speak(welcome_msg)
         
-        while self.running and self.voice_enabled:
-            try:
-                if self.is_speaking:
-                    time.sleep(0.1)
-                    continue
-                
-                data = self.stream.read(4000, exception_on_overflow=False)
-                
-                if self.recognizer.AcceptWaveform(data):
-                    result = json.loads(self.recognizer.Result())
-                    text = result.get('text', '').strip()
-                    
-                    if text and len(text) > 2:
-                        current_time = time.time()
-                        if current_time - self.last_command_time > 1.5:
-                            tool = self.process_voice_command(text)
-                            if tool and self.command_callback:
-                                self.command_callback(tool)
-                            self.last_command_time = current_time
-                
-                time.sleep(0.01)
-                
-            except Exception as e:
-                self.log(f"Voice recognition error: {e}", "error")
-                time.sleep(1)
+        # Start continuous listening
+        self.listen_continuously()
     
     def stop(self):
         """Stop voice recognition"""
@@ -2020,34 +2041,35 @@ class MainWindow:
         else:
             self.disable_voice_recognition()
     
-    def enable_voice_recognition(self):
-        """Enable voice recognition"""
-        if self.voice_system is None:
-            self.log("Voice system not initialized!", "error")
-            return
-        
-        self.log("🎤 Enabling voice recognition...", "system")
-        self.voice_enabled = True
-        
-        # Update UI
-        self.voice_button.config(
-            text="🔴 Disable Voice",
-            bg="#f38ba8",
-            fg="#1e1e2e"
-        )
-        self.voice_status_label.config(
-            text="Voice: Listening...",
-            fg="#a6e3a1"
-        )
-        
-        # Start voice recognition in separate thread
-        self.voice_system.voice_enabled = True
-        self.voice_thread = threading.Thread(target=self.voice_system.run)
-        self.voice_thread.daemon = True
-        self.voice_thread.start()
-        
-        self.log("✅ Voice recognition enabled. Speak commands now.", "success")
-        self.update_info("Voice Status: Listening ✓")
+        def enable_voice_recognition(self):
+            """Enable voice recognition"""
+            if self.voice_system is None:
+                self.log("Voice system not initialized!", "error")
+                return
+            
+            self.log("🎤 Enabling voice recognition...", "system")
+            self.voice_enabled = True
+            
+            # Update UI
+            self.voice_button.config(
+                text="🔴 Disable Voice",
+                bg="#f38ba8",
+                fg="#1e1e2e"
+            )
+            self.voice_status_label.config(
+                text="Voice: Listening...",
+                fg="#a6e3a1"
+            )
+            
+            # Start voice recognition in separate thread
+            self.voice_system.voice_enabled = True
+            self.voice_system.running = True
+            self.voice_thread = threading.Thread(target=self.voice_system.run)
+            self.voice_thread.daemon = True
+            self.voice_thread.start()
+            
+            self.log("✅ Voice recognition enabled. Speak commands now.", "success")
+            self.update_info("Voice Status: Listening ✓")
     
     def disable_voice_recognition(self):
         """Disable voice recognition"""
@@ -2073,36 +2095,23 @@ class MainWindow:
         self.log("✅ Voice recognition disabled.", "success")
         self.update_info("Voice Status: Disabled")
     
-    def handle_voice_command(self, tool_name):
-        """Handle voice command received"""
-        self.log(f"🎤 Voice command received: Fetch {tool_name}", "system")
-        
-        if self.scanning:
-            self.log("Cannot process voice command during scan!", "warning")
-            return
-        
-        if self.fetching:
-            self.log("Already fetching a tool!", "warning")
-            return
-        
-        # Schedule fetch in main thread
-        self.root.after(0, lambda: self.start_fetch_tool(tool_name))
+        def handle_voice_command(self, tool_name):
+            """Handle voice command received - UPDATED for confirmation message"""
+            self.log(f"🎤 Voice command received: {tool_name.upper()}", "system")
+            
+            if self.scanning:
+                self.log("Cannot process voice command during scan!", "warning")
+                return
+            
+            if self.fetching:
+                self.log("Already fetching a tool!", "warning")
+                return
+            
+            # Schedule fetch in main thread
+            self.root.after(0, lambda: self.start_fetch_tool_with_confirmation(tool_name))
     
-    def prompt_for_tool(self):
-        """Prompt user for which tool to fetch"""
-        if not self.tool_mapping:
-            self.log("❌ No tool mapping available! Please run scan first.", "error")
-            return
-        
-        dialog = ToolPromptDialog(self.root, self.tool_mapping)
-        tool_name = dialog.show()
-        
-        if tool_name:
-            self.log(f"User requested to fetch: {tool_name.upper()}", "system")
-            self.start_fetch_tool(tool_name)
-    
-    def start_fetch_tool(self, tool_name):
-        """Start fetching a tool"""
+    def start_fetch_tool_with_confirmation(self, tool_name):
+        """Start fetching a tool with voice confirmation"""
         if self.fetching:
             self.log("Another fetch operation is already in progress!", "warning")
             return
@@ -2114,18 +2123,21 @@ class MainWindow:
         self.status_label.config(text=f"Status: Fetching {tool_name.upper()}...")
         
         # Run in separate thread
-        self.fetch_thread = threading.Thread(target=self.run_fetch_sequence, args=(tool_name,))
+        self.fetch_thread = threading.Thread(target=self.run_fetch_sequence_with_voice, args=(tool_name,))
         self.fetch_thread.daemon = True
         self.fetch_thread.start()
     
-    def run_fetch_sequence(self, tool_name):
-        """Run the fetch sequence"""
+    def run_fetch_sequence_with_voice(self, tool_name):
+        """Run the fetch sequence with voice confirmation"""
         try:
             # Load mapping if not already loaded
             if not self.tool_mapping:
                 self.grab_system.load_mapping()
                 self.tool_mapping = self.grab_system.tool_mapping
             
+            # Speak fetching message was already done by voice system
+            
+            # Actually fetch the tool
             success = self.grab_system.fetch_tool(tool_name, self.root)
             
             if success:
@@ -2134,6 +2146,11 @@ class MainWindow:
                     f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
                     f"Last Tool: {tool_name.upper()}"
                 )
+                
+                # Speak confirmation message AFTER successful fetch
+                confirmation_msg = f"Here is your {tool_name}! What else can I get for you?"
+                self.voice_system.speak(confirmation_msg)
+                
             else:
                 self.log(f"❌ Failed to fetch {tool_name.upper()}", "error")
                 
