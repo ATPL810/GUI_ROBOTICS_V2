@@ -686,6 +686,466 @@ class SnapshotSystem:
         self.log(f"Saved summary report: {summary_filename}")
 
 # ============================================
+# GRAB SYSTEM WITH DUPLICATE HANDLING
+# ============================================
+class GrabSystem:
+    def __init__(self, arm_controller, snapshot_system, camera_system, log_callback=None):
+        self.arm = arm_controller
+        self.snapshot_system = snapshot_system
+        self.camera_system = camera_system
+        self.log_callback = log_callback
+        self.tool_mapping = {}
+        self.all_tool_locations = {}
+        self.master_report_path = None
+        
+        self.grab_scripts_dir = "movements"
+        self.fetched_tools_file = "data/fetched_tools.json"
+        self.fetched_locations = {}
+        
+        # Load fetched locations history
+        self.load_fetched_locations()
+    
+    def log(self, message, level="info"):
+        if self.log_callback:
+            self.log_callback(message, level)
+        else:
+            print(f"[{level.upper()}] {message}")
+    
+    def load_fetched_locations(self):
+        """Load previously fetched tool locations from file"""
+        self.fetched_locations = {}
+        
+        if os.path.exists(self.fetched_tools_file):
+            try:
+                with open(self.fetched_tools_file, 'r') as f:
+                    self.fetched_locations = json.load(f)
+                self.log(f"Loaded {len(self.fetched_locations)} fetched locations from history", "info")
+            except:
+                self.log("Could not load fetched locations history", "warning")
+                self.fetched_locations = {}
+    
+    def save_fetched_location(self, tool_name, point):
+        """Save a fetched location to history"""
+        location_key = f"{tool_name}_{point}"
+        self.fetched_locations[location_key] = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "tool": tool_name,
+            "point": point
+        }
+        
+        # Save to file
+        try:
+            os.makedirs(os.path.dirname(self.fetched_tools_file), exist_ok=True)
+            with open(self.fetched_tools_file, 'w') as f:
+                json.dump(self.fetched_locations, f, indent=2)
+        except Exception as e:
+            self.log(f"Warning: Could not save fetched location: {e}", "warning")
+    
+    def find_latest_master_report(self):
+        """Find the latest master report"""
+        import glob
+        pattern = "data/mappings/mapping_*/master_report.txt"
+        matches = glob.glob(pattern)
+        
+        if matches:
+            matches.sort(key=os.path.getmtime, reverse=True)
+            return matches[0]
+        
+        raise FileNotFoundError("No master report found! Please run analysis first.")
+    
+    def load_mapping(self, master_report_path=None):
+        """Load tool mapping from master report with duplicate handling"""
+        if master_report_path:
+            self.master_report_path = master_report_path
+        else:
+            self.master_report_path = self.find_latest_master_report()
+        
+        self.log(f"Using tool mapping from: {self.master_report_path}", "info")
+        self.tool_mapping, self.all_tool_locations = self.parse_master_report()
+        
+        # Sync fetched status
+        self.sync_fetched_status()
+        
+        self.log(f"Loaded {len(self.tool_mapping)} unique tool types", "success")
+        if self.all_tool_locations:
+            total_tools = sum(len(locs) for locs in self.all_tool_locations.values())
+            self.log(f"Total tool instances: {total_tools}", "info")
+        
+        return self.tool_mapping
+    
+    def parse_master_report(self):
+        """
+        Parse tool mapping from master report with duplicate handling
+        Returns:
+            - tool_mapping: Dict of tool_name -> list of available locations (sorted by confidence)
+            - all_tool_locations: Complete mapping of all tool instances
+        """
+        self.log("Parsing tool mapping (with duplicate handling)...", "info")
+        
+        tool_mapping = {}
+        all_tool_locations = {}
+        
+        with open(self.master_report_path, 'r') as f:
+            content = f.read()
+        
+        # Look for "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" section
+        if "ALL TOOL LOCATIONS (INCLUDING DUPLICATES):" in content:
+            self.log("Found duplicate locations section", "info")
+            
+            # Extract the entire section
+            start_idx = content.find("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
+            next_section_idx = content.find("ROBOT ACTION PLAN", start_idx)
+            
+            if next_section_idx > start_idx:
+                all_locations_section = content[start_idx:next_section_idx]
+            else:
+                all_locations_section = content[start_idx:]
+            
+            # Split into lines and parse
+            lines = all_locations_section.strip().split('\n')
+            
+            current_tool = None
+            
+            for line in lines:
+                line = line.strip()
+                
+                # Check for tool header (e.g., "BOLT (3 locations):")
+                if "locations):" in line or "(1 location):" in line:
+                    # Extract tool name
+                    match = re.search(r'^([A-Z\s]+)\s*\(', line)
+                    if match:
+                        current_tool = match.group(1).strip().lower()
+                        tool_mapping[current_tool] = []
+                        all_tool_locations[current_tool] = []
+                        self.log(f"Found tool: {current_tool}", "info")
+                
+                # Parse location lines
+                elif "Point" in line and current_tool and ":" in line and not line.startswith("="):
+                    if line.startswith("-") or not line:
+                        continue
+                    
+                    # Try multiple patterns
+                    patterns = [
+                        r'[⭐\s]*Point\s+([A-I]):\s*([\d.]+)%\s*\((.*?)\)',
+                        r'[⭐\s]*Point\s+([A-I]):\s*([\d.]+)%',
+                    ]
+                    
+                    for pattern in patterns:
+                        match = re.search(pattern, line)
+                        if match:
+                            point = match.group(1)
+                            confidence = float(match.group(2))
+                            
+                            # Extract position description
+                            position_desc = "unknown"
+                            if len(match.groups()) > 2 and match.group(3):
+                                position_desc = match.group(3)
+                            else:
+                                if "initial" in line.lower():
+                                    position_desc = "initial position"
+                                elif "second" in line.lower():
+                                    position_desc = "second position"
+                                elif "third" in line.lower():
+                                    position_desc = "third position"
+                            
+                            # Determine position
+                            if "initial" in position_desc.lower():
+                                position = "initial_position"
+                            elif "second" in position_desc.lower():
+                                position = "second_position"
+                            elif "third" in position_desc.lower():
+                                position = "third_position"
+                            else:
+                                position = "unknown"
+                            
+                            # Skip if point E is being added to bolt (E is hammer)
+                            if current_tool == "bolt" and point == "E":
+                                self.log(f"Skipping Point E for bolt (E is hammer)", "info")
+                                continue
+                            
+                            location_data = {
+                                "point": point,
+                                "confidence": confidence / 100,
+                                "position": position,
+                                "position_desc": position_desc,
+                                "fetched": False
+                            }
+                            
+                            tool_mapping[current_tool].append(location_data)
+                            all_tool_locations[current_tool].append(location_data)
+                            
+                            self.log(f"  Point {point}: {confidence}% confidence", "info")
+                            break
+        
+        # Clean up: Remove any tool entries with no locations
+        tools_to_remove = [tool for tool, locations in tool_mapping.items() if not locations]
+        for tool in tools_to_remove:
+            del tool_mapping[tool]
+            del all_tool_locations[tool]
+        
+        # Sort each tool's locations by confidence (highest first)
+        for tool_name in tool_mapping:
+            tool_mapping[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
+        
+        return tool_mapping, all_tool_locations
+    
+    def sync_fetched_status(self):
+        """Sync fetched status from fetched_locations to tool_mapping"""
+        for tool_name, locations in self.tool_mapping.items():
+            for location in locations:
+                location_key = f"{tool_name}_{location['point']}"
+                if location_key in self.fetched_locations:
+                    location["fetched"] = True
+                    self.log(f"Marked {tool_name.upper()} at Point {location['point']} as fetched", "info")
+                else:
+                    location["fetched"] = False
+    
+    def get_next_available_location(self, tool_name):
+        """
+        Get the next available (not fetched) location for a tool
+        Returns None if all instances are fetched
+        """
+        if tool_name not in self.tool_mapping:
+            return None
+        
+        locations = self.tool_mapping[tool_name]
+        
+        # Find first available (not fetched) location
+        for location in locations:
+            if not location.get("fetched", False):
+                return location
+        
+        # All locations fetched
+        return None
+    
+    def check_grab_script_exists(self, grab_letter):
+        """Check if grab script exists for a point"""
+        script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
+        exists = os.path.exists(script_path)
+        
+        if not exists:
+            self.log(f"Script missing: {script_path}", "warning")
+        
+        return exists
+    
+    def execute_grab_script(self, grab_letter, tool_name):
+        """Execute the grab script for a specific point - UNIVERSAL VERSION"""
+        script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
+        
+        if not os.path.exists(script_path):
+            self.log(f"ERROR: Grab script not found: {script_path}", "error")
+            return False
+        
+        self.log(f"Executing grab script for Point {grab_letter} - {tool_name.upper()}...", "info")
+        
+        try:
+            # Dynamically import the module
+            import importlib.util
+            script_name = f"grab_point_{grab_letter}"
+            spec = importlib.util.spec_from_file_location(script_name, script_path)
+            module = importlib.util.module_from_spec(spec)
+            
+            # Add arm object to module
+            module.arm = self.arm.arm
+            
+            # Execute the module
+            spec.loader.exec_module(module)
+            
+            # Get the grab function
+            grab_func_name = f"grab_point_{grab_letter}"
+            if not hasattr(module, grab_func_name):
+                self.log(f"ERROR: Function {grab_func_name} not found in script", "error")
+                return False
+            
+            grab_func = getattr(module, grab_func_name)
+            
+            # UNIVERSAL APPROACH: Try both calling patterns
+            success = False
+            
+            # Pattern 1: Try with tool_type parameter (for scripts like B)
+            try:
+                self.log(f"  Trying Pattern 1: with tool_type='{tool_name}'", "info")
+                grab_func(self.arm.arm, tool_type=tool_name)
+                self.log(f"  Success with tool_type parameter", "success")
+                success = True
+            except TypeError as e1:
+                # Pattern 2: Try without parameter (for scripts like A)
+                try:
+                    self.log(f"  Trying Pattern 2: without parameters", "info")
+                    grab_func(self.arm.arm)
+                    self.log(f"  Success without parameters", "success")
+                    success = True
+                except TypeError as e2:
+                    # Pattern 3: Try with tool_name (alternative parameter name)
+                    try:
+                        self.log(f"  Trying Pattern 3: with tool_name='{tool_name}'", "info")
+                        grab_func(self.arm.arm, tool_name=tool_name)
+                        self.log(f"  Success with tool_name parameter", "success")
+                        success = True
+                    except TypeError as e3:
+                        self.log(f"ERROR: Function doesn't accept expected parameters", "error")
+                        success = False
+            
+            # Check if script actually grabbed the right tool
+            if success:
+                # Read the script to see what tool it's configured for
+                with open(script_path, 'r') as f:
+                    script_content = f.read()
+                
+                # Check if script mentions a specific tool
+                if "BOLT" in script_content.upper() and "bolt" not in tool_name.lower():
+                    self.log(f"WARNING: Script appears to be for BOLTS, but fetching {tool_name.upper()}", "warning")
+                elif "WRENCH" in script_content.upper() and "wrench" not in tool_name.lower():
+                    self.log(f"WARNING: Script appears to be for WRENCH, but fetching {tool_name.upper()}", "warning")
+                    
+        except Exception as e:
+            self.log(f"ERROR executing grab script: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return False
+        
+        return success
+    
+    def verify_object_exists(self, tool_name):
+        """Verify if the requested object was actually detected in the last scan"""
+        import glob
+        snapshot_folders = glob.glob("data/snapshots/robot_snapshots_*")
+        if not snapshot_folders:
+            self.log("No scan data found!", "error")
+            return False
+        
+        snapshot_folders.sort(key=os.path.getmtime, reverse=True)
+        latest_folder = snapshot_folders[0]
+        
+        positions = ["initial_position", "second_position", "third_position"]
+        
+        for position in positions:
+            report_file = os.path.join(latest_folder, f"{position}_detections.txt")
+            if os.path.exists(report_file):
+                with open(report_file, 'r') as f:
+                    content = f.read()
+                    if tool_name.lower() in content.lower():
+                        self.log(f"Verified: {tool_name} found in {position}", "success")
+                        return True
+        
+        self.log(f"Verification failed: {tool_name} was not detected in last scan", "error")
+        return False
+    
+    def fetch_tool(self, tool_name, parent_window):
+        """Fetch a specific tool with duplicate handling"""
+        tool_name_lower = tool_name.lower().strip()
+        
+        self.log(f"\n{'='*60}", "system")
+        self.log(f"🤖 FETCH REQUEST: {tool_name.upper()}", "system")
+        self.log(f"{'='*60}", "system")
+        
+        # Check if tool exists in mapping
+        if tool_name_lower not in self.tool_mapping:
+            self.log(f"Tool '{tool_name}' not found in tool mapping!", "error")
+            self.show_available_tools()
+            return False
+        
+        # Get next available location (considering fetched status)
+        location = self.get_next_available_location(tool_name_lower)
+        
+        if location is None:
+            self.log(f"All {tool_name_lower.upper()} instances have been fetched!", "error")
+            total_count = len(self.tool_mapping[tool_name_lower])
+            self.log(f"Total inventory: {total_count}, All fetched", "info")
+            return False
+        
+        grab_letter = location["point"]
+        confidence = location["confidence"]
+        position_desc = location["position_desc"]
+        
+        self.log(f"Tool location: Point {grab_letter} ({position_desc})", "success")
+        self.log(f"Confidence: {confidence*100:.1f}%", "info")
+        
+        # Show inventory status
+        total_count = len(self.tool_mapping[tool_name_lower])
+        fetched_count = sum(1 for loc in self.tool_mapping[tool_name_lower] if loc.get("fetched", False))
+        remaining = total_count - fetched_count - 1  # Minus the one we're about to fetch
+        
+        if total_count > 1:
+            self.log(f"Inventory: {remaining} more available after this fetch", "info")
+        
+        # Check if grab script exists
+        if not self.check_grab_script_exists(grab_letter):
+            self.log(f"No grab script found for Point {grab_letter}", "error")
+            return False
+        
+        # Confirm with user
+        confirmation_message = f"Ready to fetch {tool_name.upper()} from Point {grab_letter}.\n\n"
+        confirmation_message += f"Confidence: {confidence*100:.1f}%\n"
+        confirmation_message += f"Position: {position_desc}\n"
+        if total_count > 1:
+            confirmation_message += f"Remaining after fetch: {remaining}\n"
+        confirmation_message += "\nProceed with fetching?"
+        
+        reply = messagebox.askyesno("Fetch Confirmation", confirmation_message)
+        if not reply:
+            self.log("Fetch cancelled by user.", "info")
+            return False
+        
+        self.log("Starting fetch sequence...", "success")
+        
+        # Verify object exists (optional)
+        self.log("Verifying object detection...", "info")
+        if not self.verify_object_exists(tool_name):
+            self.log(f"WARNING: {tool_name} was not detected in the last scan!", "warning")
+            warning_reply = messagebox.askyesno(
+                "⚠️ Warning",
+                f"{tool_name.upper()} was not detected in last scan!\n"
+                f"The tool may have been moved or is not in the workspace.\n\n"
+                f"Do you still want to attempt fetching?"
+            )
+            
+            if not warning_reply:
+                self.log("Fetch cancelled by user after warning.", "info")
+                return False
+        
+        # Execute grab sequence
+        success = self.execute_grab_script(grab_letter, tool_name_lower)
+        
+        if success:
+            # Mark as fetched
+            self.save_fetched_location(tool_name_lower, grab_letter)
+            location["fetched"] = True
+            
+            self.log(f"Successfully fetched {tool_name.upper()}!", "success")
+            
+            # Show remaining inventory
+            if total_count > 1:
+                new_remaining = total_count - (fetched_count + 1)
+                if new_remaining > 0:
+                    self.log(f"{new_remaining} more {tool_name.upper()} available in workshop", "info")
+                else:
+                    self.log(f"Last {tool_name.upper()} fetched!", "info")
+            
+            return True
+        else:
+            self.log(f"Failed to fetch {tool_name.upper()}", "error")
+            return False
+    
+    def show_available_tools(self):
+        """Show available tools from mapping with inventory status"""
+        if not self.tool_mapping:
+            self.log("No tools available in mapping!", "warning")
+            return
+        
+        self.log("Available tools in mapping:", "info")
+        for tool_name, locations in sorted(self.tool_mapping.items()):
+            available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+            total_count = len(locations)
+            
+            status = "✅" if available_count > 0 else "⛔"
+            
+            if total_count > 1:
+                self.log(f"  {status} {tool_name.upper():<15} → {available_count}/{total_count} available", "info")
+            else:
+                self.log(f"  {status} {tool_name.upper():<15} → {available_count}/{total_count} available", "info")
+
+# ============================================
 # ANALYSIS SYSTEM
 # ============================================
 class AnalysisSystem:
@@ -704,16 +1164,16 @@ class AnalysisSystem:
             print(f"[{level.upper()}] {message}")
     
     def analyze_grab_points(self, snapshot_folder):
-        """Run complete grab point analysis"""
+        """Run complete grab point analysis with duplicate handling"""
         self.log("🔍 Starting grab point analysis...", "info")
         self.snapshot_folder = snapshot_folder
         
         self.load_grab_points()
         self.parse_all_snapshots()
         self.assign_tools_to_grab_points()
-        self.generate_tool_mapping()
+        self.generate_tool_mapping_with_duplicates()
         self.save_json_mapping()
-        report_path = self.generate_master_report()
+        report_path = self.generate_master_report_with_duplicates()
         
         self.log("✅ Grab point analysis COMPLETE!", "success")
         return report_path
@@ -742,7 +1202,7 @@ class AnalysisSystem:
         with open("config/grab_points.json", "w") as f:
             json.dump(self.grab_points, f, indent=2)
         
-        self.log(f"Loaded {sum(len(v) for v in self.grab_points.values())} grab points")
+        self.log(f"Loaded {sum(len(v) for v in self.grab_points.values())} grab points", "info")
     
     def parse_all_snapshots(self):
         """Parse detection data from all 3 snapshots"""
@@ -755,7 +1215,7 @@ class AnalysisSystem:
                 "count": len(detections)
             }
             
-            self.log(f"{position}: {len(detections)} tools detected")
+            self.log(f"{position}: {len(detections)} tools detected", "info")
     
     def parse_snapshot_report(self, position_name):
         """Parse detection data from a snapshot's text report"""
@@ -799,9 +1259,10 @@ class AnalysisSystem:
     
     def calculate_distance(self, point1, point2):
         """Calculate Euclidean distance between two points"""
+        import math
         x1, y1 = point1
         x2, y2 = point2
-        return ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
     def assign_tools_to_grab_points(self, max_distance=200):
         """Assign the closest tool to each grab point"""
@@ -810,7 +1271,7 @@ class AnalysisSystem:
         assignments = {}
         
         for position_name, grab_points in self.grab_points.items():
-            self.log(f"Processing {position_name}...")
+            self.log(f"Processing {position_name}...", "info")
             
             if position_name not in self.detections_data:
                 continue
@@ -868,7 +1329,7 @@ class AnalysisSystem:
                 }
                 
                 assigned_tools.add(tool_index)
-                self.log(f"  Point {point_id}: {detection['class_name']} ({pair['distance']:.1f}px)")
+                self.log(f"  Point {point_id}: {detection['class_name']} ({pair['distance']:.1f}px)", "info")
             
             for point_id, point_coords in grab_points.items():
                 if point_id not in assignments:
@@ -883,13 +1344,13 @@ class AnalysisSystem:
         self.grab_point_assignments = assignments
         return assignments
     
-    def generate_tool_mapping(self):
-        """Generate reverse mapping from tool name to grab point"""
+    def generate_tool_mapping_with_duplicates(self):
+        """Generate mapping from tool name to ALL grab points (including duplicates)"""
         tool_mapping = {}
         
         for point_id, assignment in self.grab_point_assignments.items():
             if assignment["class_name"] != "none":
-                tool_name = assignment["class_name"]
+                tool_name = assignment["class_name"].lower()
                 
                 if tool_name not in tool_mapping:
                     tool_mapping[tool_name] = []
@@ -898,22 +1359,25 @@ class AnalysisSystem:
                     "grab_point": point_id,
                     "distance": assignment["distance"],
                     "confidence": assignment["confidence"],
-                    "position": self.get_position_from_point_id(point_id)
+                    "position": self.get_position_from_point_id(point_id),
+                    "position_desc": self.get_position_desc(self.get_position_from_point_id(point_id))
                 })
         
-        best_mapping = {}
-        for tool_name, points in tool_mapping.items():
-            points.sort(key=lambda x: (-x["confidence"], x["distance"]))
-            best_mapping[tool_name] = points[0]
+        # Sort each tool's locations by confidence (highest first)
+        for tool_name in tool_mapping:
+            tool_mapping[tool_name].sort(key=lambda x: (-x["confidence"], x["distance"]))
         
-        self.tool_mapping = best_mapping
+        self.tool_mapping = tool_mapping
         
-        if best_mapping:
-            self.log("Tool mapping generated:", "success")
-            for tool_name, mapping in best_mapping.items():
-                self.log(f"  {tool_name} → Point {mapping['grab_point']} ({mapping['confidence']*100:.1f}%)")
+        if tool_mapping:
+            self.log("Tool mapping generated (with duplicates):", "success")
+            for tool_name, locations in tool_mapping.items():
+                if len(locations) > 1:
+                    self.log(f"  {tool_name.upper():<15} → {len(locations)} locations", "info")
+                else:
+                    self.log(f"  {tool_name.upper():<15} → Point {locations[0]['grab_point']} ({locations[0]['confidence']*100:.1f}%)", "info")
         
-        return best_mapping
+        return tool_mapping
     
     def get_position_from_point_id(self, point_id):
         """Determine which position a grab point belongs to"""
@@ -924,6 +1388,16 @@ class AnalysisSystem:
         elif point_id in ["H", "I"]:
             return "third_position"
         return "unknown"
+    
+    def get_position_desc(self, position):
+        """Get human-readable position description"""
+        if position == "initial_position":
+            return "initial position"
+        elif position == "second_position":
+            return "second position"
+        elif position == "third_position":
+            return "third position"
+        return position
     
     def save_json_mapping(self):
         """Save grab point assignments and tool mapping to JSON"""
@@ -945,11 +1419,11 @@ class AnalysisSystem:
         with open(json_file, 'w') as f:
             json.dump(mapping_data, f, indent=2, default=str)
         
-        self.log(f"Saved JSON mapping to: {json_file}")
+        self.log(f"Saved JSON mapping to: {json_file}", "info")
         return json_file
     
-    def generate_master_report(self):
-        """Generate comprehensive master report"""
+    def generate_master_report_with_duplicates(self):
+        """Generate comprehensive master report with duplicate handling"""
         total_points = len(self.grab_point_assignments)
         assigned_points = sum(1 for a in self.grab_point_assignments.values() if a["class_name"] != "none")
         
@@ -985,261 +1459,50 @@ class AnalysisSystem:
                     else:
                         report_lines.append(f"  Point {point_id}: No tool assigned")
         
-        report_lines.append("\nTOOL TO GRAB POINT MAPPING:")
+        report_lines.append("\nALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
         report_lines.append("-" * 40)
         
         if self.tool_mapping:
-            for tool_name, mapping in sorted(self.tool_mapping.items()):
-                report_lines.append(f"  {tool_name.upper():<15} → Point {mapping['grab_point']} "
-                                  f"({mapping['confidence']*100:.1f}%)")
+            for tool_name, locations in sorted(self.tool_mapping.items()):
+                if len(locations) > 1:
+                    report_lines.append(f"\n{tool_name.upper()} ({len(locations)} locations):")
+                    for i, loc in enumerate(locations, 1):
+                        star = "⭐ " if i == 1 else "  "
+                        position_desc = self.get_position_desc(loc["position"])
+                        report_lines.append(f"  {star}Point {loc['grab_point']}: {loc['confidence']*100:.1f}% ({position_desc})")
+                else:
+                    report_lines.append(f"\n{tool_name.upper()} (1 location):")
+                    position_desc = self.get_position_desc(locations[0]["position"])
+                    report_lines.append(f"  ⭐ Point {locations[0]['grab_point']}: {locations[0]['confidence']*100:.1f}% ({position_desc})")
         else:
-            report_lines.append("  No tools mapped")
+            report_lines.append("  No tools found")
+        
+        report_lines.append("\nROBOT ACTION PLAN (WITH DUPLICATE HANDLING):")
+        report_lines.append("-" * 40)
+        
+        if self.tool_mapping:
+            for tool_name, locations in sorted(self.tool_mapping.items()):
+                if len(locations) > 1:
+                    report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
+                    report_lines.append(f"  Available at {len(locations)} locations:")
+                    for i, loc in enumerate(locations, 1):
+                        star = "⭐ " if i == 1 else "  "
+                        position_desc = self.get_position_desc(loc["position"])
+                        report_lines.append(f"  {star}Point {loc['grab_point']} ({position_desc})")
+                    report_lines.append(f"  Will fetch from: Point {locations[0]['grab_point']} (highest confidence)")
+                else:
+                    report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
+                    position_desc = self.get_position_desc(locations[0]["position"])
+                    report_lines.append(f"  Will fetch from: Point {locations[0]['grab_point']} ({position_desc})")
+        else:
+            report_lines.append("  No action plan available (no tools mapped)")
         
         report_file = os.path.join(self.output_dir, "master_report.txt")
         with open(report_file, 'w') as f:
             f.write('\n'.join(report_lines))
         
-        self.log(f"Saved master report to: {report_file}")
+        self.log(f"Saved master report to: {report_file}", "info")
         return report_file
-
-# ============================================
-# GRAB SYSTEM WITH OBJECT VERIFICATION
-# ============================================
-class GrabSystem:
-    def __init__(self, arm_controller, snapshot_system, camera_system, log_callback=None):
-        self.arm = arm_controller
-        self.snapshot_system = snapshot_system
-        self.camera_system = camera_system
-        self.log_callback = log_callback
-        self.tool_mapping = {}
-        self.master_report_path = None
-        
-        self.grab_scripts_dir = "movements"
-        self.available_tools = []
-    
-    def log(self, message, level="info"):
-        if self.log_callback:
-            self.log_callback(message, level)
-        else:
-            print(f"[{level.upper()}] {message}")
-    
-    def load_mapping(self, master_report_path=None):
-        """Load tool mapping from master report"""
-        if master_report_path:
-            self.master_report_path = master_report_path
-        else:
-            self.master_report_path = self.find_latest_master_report()
-        
-        self.tool_mapping = self.parse_master_report()
-        self.log(f"Loaded {len(self.tool_mapping)} tool mappings")
-        return self.tool_mapping
-    
-    def find_latest_master_report(self):
-        """Find the latest master report"""
-        import glob
-        pattern = "data/mappings/mapping_*/master_report.txt"
-        matches = glob.glob(pattern)
-        
-        if matches:
-            matches.sort(key=os.path.getmtime, reverse=True)
-            return matches[0]
-        
-        raise FileNotFoundError("No master report found!")
-    
-    def parse_master_report(self):
-        """Parse tool mapping from master report"""
-        tool_mapping = {}
-        
-        with open(self.master_report_path, 'r') as f:
-            content = f.read()
-            
-            if "TOOL TO GRAB POINT MAPPING:" in content:
-                mapping_section = content.split("TOOL TO GRAB POINT MAPPING:")[1]
-                lines = mapping_section.strip().split('\n')
-                
-                for line in lines:
-                    if "→" in line:
-                        parts = line.split("→")
-                        if len(parts) == 2:
-                            tool_name = parts[0].strip().lower()
-                            grab_point = parts[1].strip()
-                            match = re.search(r'Point\s+([A-I])', grab_point)
-                            if match:
-                                grab_letter = match.group(1)
-                                tool_mapping[tool_name] = grab_letter
-        
-        return tool_mapping
-    
-    def check_grab_script_exists(self, grab_letter):
-        """Check if grab script exists for a point"""
-        script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
-        exists = os.path.exists(script_path)
-        
-        if not exists:
-            self.log(f"   Script missing: {script_path}", "warning")
-        
-        return exists
-    
-    def execute_grab_script(self, grab_letter):
-        """Execute the grab script for a specific point"""
-        script_path = os.path.join(self.grab_scripts_dir, f"grab_point_{grab_letter}.py")
-        
-        if not os.path.exists(script_path):
-            self.log(f"❌ Grab script not found: {script_path}", "error")
-            return False
-        
-        self.log(f"📄 Executing grab script: {script_path}", "info")
-        
-        try:
-            import importlib.util
-            
-            module_name = f"grab_point_{grab_letter}"
-            spec = importlib.util.spec_from_file_location(module_name, script_path)
-            module = importlib.util.module_from_spec(spec)
-            module.arm = self.arm
-            spec.loader.exec_module(module)
-            
-            grab_function_name = f"grab_point_{grab_letter}"
-            if hasattr(module, grab_function_name):
-                grab_function = getattr(module, grab_function_name)
-                self.log(f"   Running {grab_function_name}()...", "info")
-                grab_function(self.arm)
-                self.log(f"   ✅ {grab_function_name}() completed", "success")
-                return True
-            else:
-                for func_name in ["main", "grab", "execute_grab"]:
-                    if hasattr(module, func_name):
-                        grab_function = getattr(module, func_name)
-                        self.log(f"   Running {func_name}()...", "info")
-                        grab_function(self.arm)
-                        self.log(f"   ✅ {func_name}() completed", "success")
-                        return True
-                
-                self.log(f"❌ No grab function found in {script_path}", "error")
-                return False
-                
-        except Exception as e:
-            self.log(f"❌ Error executing grab script: {str(e)}", "error")
-            return False
-    
-    def verify_object_exists(self, tool_name):
-        """Verify if the requested object was actually detected in the last scan"""
-        import glob
-        snapshot_folders = glob.glob("data/snapshots/robot_snapshots_*")
-        if not snapshot_folders:
-            self.log("No scan data found!", "error")
-            return False
-        
-        snapshot_folders.sort(key=os.path.getmtime, reverse=True)
-        latest_folder = snapshot_folders[0]
-        
-        positions = ["initial_position", "second_position", "third_position"]
-        
-        for position in positions:
-            report_file = os.path.join(latest_folder, f"{position}_detections.txt")
-            if os.path.exists(report_file):
-                with open(report_file, 'r') as f:
-                    content = f.read()
-                    if tool_name.lower() in content.lower():
-                        self.log(f"✅ Verified: {tool_name} found in {position}", "success")
-                        return True
-        
-        self.log(f"❌ Verification failed: {tool_name} was not detected in last scan", "error")
-        return False
-    
-    def fetch_tool(self, tool_name, parent_window):
-        """Fetch a specific tool with verification"""
-        tool_name_lower = tool_name.lower().strip()
-        
-        self.log(f"\n{'='*60}", "system")
-        self.log(f"🤖 FETCH REQUEST: {tool_name.upper()}", "system")
-        self.log(f"{'='*60}", "system")
-        
-        if tool_name_lower not in self.tool_mapping:
-            self.log(f"❌ Tool '{tool_name}' not found in tool mapping!", "error")
-            self.show_available_tools()
-            return False
-        
-        self.log("🔍 Verifying object detection...", "info")
-        if not self.verify_object_exists(tool_name):
-            self.log(f"⚠️ WARNING: {tool_name} was not detected in the last scan!", "warning")
-            self.log("The tool may have been moved or is not in the workspace.", "warning")
-            
-            reply = messagebox.askyesno(
-                "⚠️ Warning",
-                f"{tool_name.upper()} was not detected in last scan!\n"
-                f"Do you still want to attempt fetching?"
-            )
-            
-            if not reply:
-                self.log("Fetch cancelled by user.", "info")
-                return False
-        
-        grab_letter = self.tool_mapping[tool_name_lower]
-        self.log(f"📍 Tool location: Point {grab_letter}", "success")
-        
-        self.log(f"\n📋 FETCH CONFIRMATION:", "info")
-        self.log(f"   Tool: {tool_name.upper()}", "info")
-        self.log(f"   Location: Point {grab_letter}", "info")
-        self.log(f"   Arm will move to position and attempt to grab.", "info")
-        
-        reply = messagebox.askyesno("Fetch Confirmation", f"Proceed with fetching {tool_name.upper()}?")
-        if not reply:
-            self.log("Fetch cancelled by user.", "info")
-            return False
-        
-        self.log("\n🚀 Starting fetch sequence...", "success")
-        success = self.execute_fetch_sequence(grab_letter, tool_name)
-        
-        if success:
-            self.log(f"\n✅ SUCCESSFULLY FETCHED {tool_name.upper()}!", "success")
-            return True
-        else:
-            self.log(f"\n❌ FAILED to fetch {tool_name.upper()}", "error")
-            return False
-    
-    def show_available_tools(self):
-        """Show available tools from mapping"""
-        if self.tool_mapping:
-            self.log("Available tools in mapping:", "info")
-            for tool in sorted(self.tool_mapping.keys()):
-                self.log(f"  • {tool.upper()}", "info")
-        else:
-            self.log("No tools available in mapping!", "warning")
-    
-    def execute_fetch_sequence(self, grab_letter, tool_name):
-        """Execute the fetch sequence"""
-        try:
-            if grab_letter in ["A", "B", "C", "D"]:
-                self.log("Moving to initial position...", "info")
-                self.arm.go_to_initial_position()
-            elif grab_letter in ["E", "F", "G"]:
-                self.log("Moving to second position...", "info")
-                self.arm.go_to_second_position()
-            elif grab_letter in ["H", "I"]:
-                self.log("Moving to third position...", "info")
-                self.arm.go_to_third_position()
-            else:
-                self.log(f"Unknown grab point: {grab_letter}", "error")
-                return False
-            
-            time.sleep(1)
-            
-            self.log(f"Attempting to grab at Point {grab_letter}...", "info")
-            time.sleep(2)
-            
-            self.log("Returning to home position...", "info")
-            self.arm.go_to_home()
-            
-            return True
-            
-        except Exception as e:
-            self.log(f"Error during fetch sequence: {e}", "error")
-            try:
-                self.arm.go_to_home()
-            except:
-                pass
-            return False
 
 # ============================================
 # TOOL PROMPT DIALOG (Tkinter)
@@ -1859,6 +2122,7 @@ class MainWindow:
     def run_fetch_sequence(self, tool_name):
         """Run the fetch sequence"""
         try:
+            # Load mapping if not already loaded
             if not self.tool_mapping:
                 self.grab_system.load_mapping()
                 self.tool_mapping = self.grab_system.tool_mapping
@@ -2079,6 +2343,13 @@ def main():
     os.makedirs("data/mappings", exist_ok=True)
     os.makedirs("config", exist_ok=True)
     os.makedirs("movements", exist_ok=True)
+    os.makedirs("data", exist_ok=True)
+    
+    # Check for grab point scripts
+    movements_dir = "movements"
+    if not os.path.exists(movements_dir):
+        print(f"Warning: {movements_dir} directory not found!")
+        print("Please create grab point scripts (grab_point_A.py to grab_point_I.py) in the movements directory.")
     
     # Create and run main window
     window = MainWindow()
