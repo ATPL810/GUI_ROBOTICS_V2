@@ -22,7 +22,7 @@ import pyttsx3
 from vosk import Model, KaldiRecognizer
 
 # ============================================
-# VOICE RECOGNITION SYSTEM
+# VOICE RECOGNITION SYSTEM (Updated from Voice_Commands.py)
 # ============================================
 class VoiceRecognitionSystem:
     def __init__(self, log_callback=None):
@@ -34,7 +34,7 @@ class VoiceRecognitionSystem:
         self.last_command_time = 0
         self.command_callback = None
         
-        # Tools dictionary
+        # Tools dictionary from Voice_Commands.py
         self.tools = {
             "screwdriver": ["screwdriver", "screw", "driver", "screwdriv", "skrewdriver"],
             "bolt": ["bolt", "bold", "board", "boat", "bult", "bolte", "bohlt"],
@@ -94,7 +94,7 @@ class VoiceRecognitionSystem:
             return False
     
     def speak(self, text):
-        """Make the robot speak through speakers"""
+        """Make the robot speak through speakers - UPDATED"""
         if not text or self.is_speaking:
             return
         
@@ -109,15 +109,25 @@ class VoiceRecognitionSystem:
         
         self.is_speaking = False
     
+    def get_fetching_message(self, tool):
+        """Generate fetching message - ALWAYS USED when fetching any tool"""
+        return f"Fetching the {tool} for you!"
+    
+    def get_confirmation_message(self, tool):
+        """Generate confirmation message after fetching"""
+        return f"Here is your {tool}! What else can I get for you?"
+    
     def find_tool(self, text):
-        """Find which tool was mentioned"""
+        """Find which tool was mentioned - UPDATED"""
         text_lower = text.lower()
         
+        # Check each tool's keywords
         for tool, keywords in self.tools.items():
             for keyword in keywords:
                 if keyword in text_lower:
                     return tool
         
+        # Check for similar words (first 3 letters)
         words = text_lower.split()
         for word in words:
             if len(word) >= 3:
@@ -129,38 +139,39 @@ class VoiceRecognitionSystem:
         return None
     
     def process_voice_command(self, text):
-        """Process a voice command"""
+        """Process a voice command - UPDATED from Voice_Commands.py"""
         self.log(f"Voice command: '{text}'", "info")
         
         text_lower = text.lower()
         
-        if any(greet in text_lower for greet in ["hello", "hi", "hey", "greetings"]):
-            self.speak("Hello! I'm your garage assistant. What tool would you like me to fetch?")
-            return None
-        
+        # Check for help first
         if any(word in text_lower for word in ["help", "what can you do", "instructions"]):
-            self.speak("I can fetch tools for you. Just say 'get me' followed by the tool name. Try 'get me the hammer' or 'fetch the screwdriver'.")
+            help_msg = "I can fetch tools for you. Just say the name of the tool, like 'hammer' or 'wrench'."
+            self.speak(help_msg)
             return None
         
+        # Check for tool request - primary action
         tool = self.find_tool(text_lower)
         
         if tool:
-            command_words = ["get", "bring", "give", "pass", "hand", "fetch", "need", "want", "grab", "give me", "get me"]
-            has_command = any(cmd in text_lower for cmd in command_words)
-            
-            if has_command:
-                fetching_msg = f"Fetching the {tool} for you!"
-                self.speak(fetching_msg)
-                return tool
-            else:
-                self.speak(f"I heard '{tool}'. To get it, say 'get me the {tool}'.")
-                return None
+            # If a tool is found, fetch it directly
+            fetching_msg = self.get_fetching_message(tool)
+            self.speak(fetching_msg)
+            return tool
         
-        self.speak("I didn't understand. Try saying: 'get me the wrench', 'fetch the hammer', or 'I need a screwdriver'.")
+        # Check for greeting if no tool or help command was found
+        if any(greet in text_lower for greet in ["hello", "hi", "hey", "greetings"]):
+            greeting_msg = "Hello! I'm here to help. Just say the name of a tool you need."
+            self.speak(greeting_msg)
+            return None
+        
+        # If nothing was understood
+        error_msg = "I didn't catch that. Please say the name of a tool, like 'hammer' or 'screwdriver'."
+        self.speak(error_msg)
         return None
     
     def run(self):
-        """Main voice recognition loop"""
+        """Main voice recognition loop - UPDATED"""
         self.running = True
         
         if not self.initialize_voice():
@@ -168,7 +179,7 @@ class VoiceRecognitionSystem:
             return
         
         self.log("🔊 Voice recognition started", "success")
-        welcome_msg = "Voice recognition enabled. You can now speak commands."
+        welcome_msg = "Hello! I am your Arrange Assistant. I can fetch tools for you. Just say the name of a tool you need, like 'wrench' or 'hammer'."
         self.speak(welcome_msg)
         
         while self.running and self.voice_enabled:
@@ -1641,7 +1652,7 @@ class ToolPromptDialog:
         return self.selected_tool
 
 # ============================================
-# MAIN GUI WINDOW (Tkinter)
+# MAIN GUI WINDOW (Tkinter) - UPDATED
 # ============================================
 class MainWindow:
     def __init__(self):
@@ -1752,19 +1763,6 @@ class MainWindow:
         )
         self.scan_button.grid(row=0, column=1, padx=5, pady=5)
         
-        # Stop button
-        self.stop_button = tk.Button(
-            control_frame,
-            text="🛑 Emergency Stop",
-            command=self.emergency_stop,
-            bg="#f38ba8",
-            fg="#1e1e2e",
-            font=("Arial", 12, "bold"),
-            width=20,
-            height=2
-        )
-        self.stop_button.grid(row=1, column=0, padx=5, pady=5)
-        
         # Home button
         self.home_button = tk.Button(
             control_frame,
@@ -1776,7 +1774,7 @@ class MainWindow:
             width=20,
             height=2
         )
-        self.home_button.grid(row=1, column=1, padx=5, pady=5)
+        self.home_button.grid(row=0, column=2, padx=5, pady=5)
         
         # Fetch button
         self.fetch_prompt_button = tk.Button(
@@ -1789,11 +1787,37 @@ class MainWindow:
             width=20,
             height=2
         )
-        self.fetch_prompt_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+        self.fetch_prompt_button.grid(row=1, column=0, padx=5, pady=5)
+        
+        # Tools listbox button
+        self.fetch_button = tk.Button(
+            control_frame,
+            text="🛠️ Fetch from List",
+            command=self.fetch_selected_tool,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        self.fetch_button.grid(row=1, column=1, padx=5, pady=5)
+        
+        # Clear log button in control frame
+        clear_log_btn = tk.Button(
+            control_frame,
+            text="🗑️ Clear Log",
+            command=self.clear_log,
+            bg="#585b70",
+            fg="#cdd6f4",
+            font=("Arial", 12, "bold"),
+            width=20,
+            height=2
+        )
+        clear_log_btn.grid(row=1, column=2, padx=5, pady=5)
         
         # Status labels
         status_frame = tk.Frame(control_frame, bg="#1e1e2e")
-        status_frame.grid(row=3, column=0, columnspan=2, pady=(10, 5), sticky="ew")
+        status_frame.grid(row=2, column=0, columnspan=3, pady=(10, 5), sticky="ew")
         
         self.status_label = tk.Label(
             status_frame,
@@ -1819,7 +1843,7 @@ class MainWindow:
             length=400,
             mode='determinate'
         )
-        self.progress_bar.grid(row=4, column=0, columnspan=2, padx=5, pady=(5, 10), sticky="ew")
+        self.progress_bar.grid(row=3, column=0, columnspan=3, padx=5, pady=(5, 10), sticky="ew")
         
         # Tools list
         tools_frame = tk.LabelFrame(
@@ -1845,17 +1869,6 @@ class MainWindow:
         self.tools_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.tools_listbox.bind('<Double-Button-1>', lambda e: self.fetch_selected_tool())
         
-        # Fetch selected button
-        self.fetch_button = tk.Button(
-            tools_frame,
-            text="🤖 Fetch Selected Tool",
-            command=self.fetch_selected_tool,
-            bg="#585b70",
-            fg="#cdd6f4",
-            font=("Arial", 11, "bold")
-        )
-        self.fetch_button.pack(pady=(0, 10))
-        
         # ========== RIGHT PANEL ==========
         
         # Logger
@@ -1880,17 +1893,6 @@ class MainWindow:
             height=25
         )
         self.logger_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Clear log button
-        clear_button = tk.Button(
-            logger_frame,
-            text="🗑️ Clear Log",
-            command=self.clear_log,
-            bg="#585b70",
-            fg="#cdd6f4",
-            font=("Arial", 10, "bold")
-        )
-        clear_button.pack(pady=(0, 10))
         
         # System info
         info_frame = tk.LabelFrame(
@@ -1983,18 +1985,15 @@ class MainWindow:
         self.current_frame = frame
     
     def update_camera(self):
-        """Update camera display in GUI thread"""
+        """Update camera display in GUI thread - RESIZED TO HALF"""
         if self.current_frame is not None:
             try:
                 rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
                 h, w = rgb_image.shape[:2]
                 
-                # Resize to fit label
-                max_width = 620
-                max_height = 460
-                scale = min(max_width / w, max_height / h)
-                new_w = int(w * scale)
-                new_h = int(h * scale)
+                # RESIZE TO HALF - Updated dimensions
+                new_w = w // 2  # Half width
+                new_h = h // 2  # Half height
                 
                 resized = cv2.resize(rgb_image, (new_w, new_h))
                 
@@ -2171,8 +2170,9 @@ class MainWindow:
         self.scanning = True
         self.scan_button.config(state=tk.DISABLED)
         self.fetch_prompt_button.config(state=tk.DISABLED)
+        self.fetch_button.config(state=tk.DISABLED)
         self.voice_button.config(state=tk.DISABLED)
-        self.stop_button.config(state=tk.NORMAL)
+        self.home_button.config(state=tk.DISABLED)
         self.status_label.config(text="Status: Scanning...")
         self.progress_bar['value'] = 0
         
@@ -2228,8 +2228,9 @@ class MainWindow:
         """Re-enable scan buttons"""
         self.scan_button.config(state=tk.NORMAL)
         self.fetch_prompt_button.config(state=tk.NORMAL)
+        self.fetch_button.config(state=tk.NORMAL)
         self.voice_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.NORMAL)
+        self.home_button.config(state=tk.NORMAL)
         self.status_label.config(text="Status: Ready")
     
     def update_tools_list(self):
@@ -2269,32 +2270,6 @@ class MainWindow:
             self.log("✅ Arm at home position", "success")
         except Exception as e:
             self.log(f"❌ Failed to go home: {e}", "error")
-    
-    def emergency_stop(self):
-        """Emergency stop all operations"""
-        self.log("🛑 EMERGENCY STOP ACTIVATED!", "error")
-        
-        self.scanning = False
-        self.fetching = False
-        
-        if self.voice_enabled:
-            self.disable_voice_recognition()
-        
-        self.scan_button.config(state=tk.NORMAL)
-        self.fetch_prompt_button.config(state=tk.NORMAL)
-        self.fetch_button.config(state=tk.NORMAL)
-        self.voice_button.config(state=tk.NORMAL)
-        self.status_label.config(text="Status: Emergency Stop")
-        
-        if self.camera_system:
-            self.camera_system.stop()
-        
-        try:
-            self.log("Moving arm to safe position...", "info")
-            self.arm_controller.go_to_home()
-            self.log("✅ Arm at safe position", "success")
-        except:
-            self.log("⚠️ Could not move arm to safe position", "warning")
     
     def update_info(self, *args):
         """Update system information"""
