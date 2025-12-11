@@ -1,0 +1,71 @@
+ROBOT ARM AUTOMATIC SNAPSHOT SYSTEM - SUMMARY REPORT
+======================================================================
+Report generated: 2025-12-11 14:59:04
+Total snapshots taken: 9
+======================================================================
+
+TOTAL OBJECTS DETECTED: 8
+
+SNAPSHOT SUMMARY BY POSITION:
+--------------------------------------------------
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-11 14:55:02
+  Image: initial_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Hammer: 93.2%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-11 14:55:10
+  Image: second_position.jpg
+  Objects detected: 0
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-11 14:55:18
+  Image: third_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Wrench: 73.3%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-11 14:57:00
+  Image: initial_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Bolt: 90.7%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-11 14:57:09
+  Image: second_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Plier: 95.9%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-11 14:57:17
+  Image: third_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Wrench: 93.6%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-11 14:58:43
+  Image: initial_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Bolt: 92.5%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-11 14:58:51
+  Image: second_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Plier: 95.5%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-11 14:58:59
+  Image: third_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Wrench: 94.8%

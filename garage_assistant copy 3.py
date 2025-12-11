@@ -485,7 +485,7 @@ class GarageAssistant:
         
         # Execute grab sequence
         print("\n🚀 Starting fetch sequence...")
-        success = self.execute_grab_script(grab_letter)
+        success = self.execute_grab_script(grab_letter, tool_name_lower)
         
         if success:
             # Mark as fetched

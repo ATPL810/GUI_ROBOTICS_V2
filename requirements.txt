@@ -13,9 +13,8 @@ pyserial
 vosk 
 pyaudio
 pyttsx3
-
-# For GUI
-PyQt5
+portaudio19-dev
+espeak-ng
 
 # For hand gestures
-mediapipe
+# mediapipe

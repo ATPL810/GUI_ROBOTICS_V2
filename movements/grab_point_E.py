@@ -36,5 +36,5 @@ def grab_point_E(arm, tool_type="hammer"):
     arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 100, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 1000)
+    arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 1000)
     print(f"Grab Point E completed for {tool_type}")

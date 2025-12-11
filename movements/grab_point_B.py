@@ -37,5 +37,6 @@ def grab_point_B(arm, tool_type="wrench"):
     arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 120, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 1000)
+    arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 1000)
+
     print(f"Grab Point B completed for {tool_type}")

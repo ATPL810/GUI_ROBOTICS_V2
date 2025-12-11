@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "generated": "2025-12-11T15:05:43.518024",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251211_150517",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "D": {
+      "class_name": "wrench",
+      "confidence": 0.905,
+      "distance": 57.76028047023318,
+      "tool_center": [
+        462.0,
+        256.5
+      ],
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "B": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "F": {
+      "class_name": "bolt",
+      "confidence": 0.935,
+      "distance": 23.717082451262844,
+      "tool_center": [
+        319.5,
+        141.5
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 57.76028047023318,
+        "confidence": 0.905,
+        "position": "initial_position",
+        "position_desc": "initial position",
+        "fetched": false
+      }
+    ],
+    "bolt": [
+      {
+        "grab_point": "F",
+        "distance": 23.717082451262844,
+        "confidence": 0.935,
+        "position": "second_position",
+        "position_desc": "second position",
+        "fetched": false
+      }
+    ]
+  },
+  "all_tool_locations": {
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 57.76028047023318,
+        "confidence": 0.905,
+        "position": "initial_position",
+        "position_desc": "initial position",
+        "fetched": false
+      }
+    ],
+    "bolt": [
+      {
+        "grab_point": "F",
+        "distance": 23.717082451262844,
+        "confidence": 0.935,
+        "position": "second_position",
+        "position_desc": "second position",
+        "fetched": false
+      }
+    ]
+  }
+}

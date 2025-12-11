@@ -1,6 +1,6 @@
 import time
 
-def grab_point_C(arm):
+def grab_point_C(arm, tool_type="bolts"):
     """Grabbing point C - Bolt"""
     print("Starting Grab Point C - Bolt")
     
@@ -27,5 +27,5 @@ def grab_point_C(arm):
     arm.Arm_serial_servo_write6(130, 30, 55, 45, 90, 125, 1000)
 
     time.sleep(2)
-    arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 1000)
+    arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 1000)
     print("Grab Point C completed")

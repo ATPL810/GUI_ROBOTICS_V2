@@ -126,7 +126,7 @@ class RobotArmController:
     def go_to_home(self):
         """Go to safe home position"""
         self.log("Moving to home position...")
-        self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
+        self.arm.Arm_serial_servo_write6(90, 105, 45, -35, 90, 90, 1000)
         time.sleep(2)
         self.log("✅ At home position")
 

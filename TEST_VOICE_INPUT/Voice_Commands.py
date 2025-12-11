@@ -23,7 +23,7 @@ class AlwaysListeningAssistant:
         # Initialize Text-to-Speech
         print("Initializing speech engine...")
         self.tts = pyttsx3.init()
-        self.tts.setProperty('rate', 170)
+        self.tts.setProperty('rate', 140)
         self.tts.setProperty('volume', 0.9)
         
         # Robot settings
@@ -41,13 +41,11 @@ class AlwaysListeningAssistant:
         """Make the robot speak through speakers - SIMPLIFIED"""
         if not text:
             return
-            
+                
         print(f"\n🤖 {self.robot_name}: {text}")
         
         # Mark robot as speaking
         self.is_speaking = True
-        self.tts.say(text)
-        self.tts.runAndWait()
         try:
             # Speak the text (this is what makes the sound)
             self.tts.say(text)
@@ -79,7 +77,8 @@ class AlwaysListeningAssistant:
             channels=1,
             rate=16000,
             input=True,
-            frames_per_buffer=8000
+            frames_per_buffer=8000,
+            input_device_index=3
         )
         
         recognizer = KaldiRecognizer(self.model, 16000)
@@ -131,49 +130,40 @@ class AlwaysListeningAssistant:
         
         return None
     
+    # --- THIS IS THE MAIN MODIFIED FUNCTION ---
     def process_command(self, text):
-        """Process a user command - SIMPLIFIED to always speak fetching"""
-        print(f"\n🎤 User said: '{text}'")
-        
+        """Process a user command - SIMPLIFIED to fetch on tool name alone"""
         text_lower = text.lower()
         
-        # Check for greeting
-        if any(greet in text_lower for greet in ["hello", "hi", "hey", "greetings"]):
-            self.speak("Hello! I'm here to help. What tool would you like me to fetch?")
-            return True
-        
-        # Check for help
+        # Check for help first, as it's a specific request for information
         if any(word in text_lower for word in ["help", "what can you do", "instructions"]):
-            self.speak("I can fetch tools for you. Just say 'get me' followed by the tool name. Try 'get me the hammer' or 'fetch the screwdriver'.")
+            self.speak("I can fetch tools for you. Just say the name of the tool, like 'hammer' or 'wrench'.")
             return True
-        
-        # Check for tool request
+
+        # Check for tool request - this is now the primary action
         tool = self.find_tool(text_lower)
         
         if tool:
-            command_words = ["get", "bring", "give", "pass", "hand", "fetch", "need", "want", "grab"]
-            has_command = any(cmd in text_lower for cmd in command_words)
+            # If a tool is found, fetch it directly, no command word needed.
+            fetching_msg = self.get_fetching_message(tool)
+            self.speak(fetching_msg)
             
-            if has_command:
-                # ALWAYS speak fetching message
-                fetching_msg = self.get_fetching_message(tool)
-                self.speak(fetching_msg)
-                
-                # Simulate fetching action
-                print(f"\n⚙️ [ACTION] Robot is physically fetching: {tool}")
-                time.sleep(1)  # Simulate time to fetch
-                
-                # Confirm completion
-                confirmation_msg = self.get_confirmation_message(tool)
-                self.speak(confirmation_msg)
-                return True
-            else:
-                # Tool mentioned but no command - still acknowledge
-                self.speak(f"I heard '{tool}'. To get it, say 'get me the {tool}'.")
-                return True
-        
-        # No tool found
-        self.speak("I didn't understand. Try saying: 'get me the wrench', 'fetch the hammer', or 'I need a screwdriver'.")
+            # Simulate fetching action
+            print(f"\n⚙️ [ACTION] Robot is physically fetching: {tool}")
+            time.sleep(1)  # Simulate time to fetch
+            
+            # Confirm completion
+            confirmation_msg = self.get_confirmation_message(tool)
+            self.speak(confirmation_msg)
+            return True
+
+        # Check for greeting if no tool or help command was found
+        if any(greet in text_lower for greet in ["hello", "hi", "hey", "greetings"]):
+            self.speak("Hello! I'm here to help. Just say the name of a tool you need.")
+            return True
+
+        # If nothing was understood, provide a generic response
+        self.speak("I didn't catch that. Please say the name of a tool, like 'hammer' or 'screwdriver'.")
         return True
     
     def run(self):
@@ -188,8 +178,9 @@ class AlwaysListeningAssistant:
         listen_thread = threading.Thread(target=self.listen_continuously, daemon=True)
         listen_thread.start()
         
+        # --- MODIFIED WELCOME MESSAGE ---
         # Give initial welcome message
-        welcome_msg = "Hello! I am your Arrange Assistant. I can fetch tools for you. Try saying 'get me the wrench' or 'fetch the hammer'."
+        welcome_msg = "Hello! I am your Arrange Assistant. I can fetch tools for you. Just say the name of a tool you need, like 'wrench' or 'hammer'."
         self.speak(welcome_msg)
         
         # Main loop
@@ -203,12 +194,12 @@ class AlwaysListeningAssistant:
                     text = self.command_queue.pop(0)
                     self.process_command(text)
                 
-                # If idle for 20 seconds, give a reminder
-                if time.time() - self.last_command_time > 20 and not self.is_speaking:
+                # If idle for 60 seconds, give a reminder
+                if time.time() - self.last_command_time > 60 and not self.is_speaking:
                     self.speak("I'm listening. You can ask for tools anytime.")
                     self.last_command_time = time.time()
                 
-                time.sleep(0.1)
+                
                 
             except KeyboardInterrupt:
                 print("\n👋 Shutting down...")
