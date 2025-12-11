@@ -37,13 +37,14 @@ class VoiceRecognitionSystem:
         
         # Tools dictionary from Voice_Commands.py
         self.tools = {
-            "screwdriver": ["screwdriver", "screw", "driver", "screwdriv", "skrewdriver"],
-            "bolt": ["bolt", "bold", "board", "boat", "bult", "bolte", "bohlt"],
-            "wrench": ["wrench", "rench", "range", "french", "spanner", "rensh"],
-            "measuring tape": ["measuring tape", "measuring tap", "tape", "measure", "ruler", "measuring", "measur", "measure tape"],
-            "hammer": ["hammer", "armor", "amor", "ammer", "hamer", "hamr", "mallet"],
-            "plier": ["plier", "players", "pliers", "pryer", "player", "plyer", "pincher"]
+            "screwdriver": ["screwdriver", "screw", "driver", "screwdriv", "skrewdriver", "skrewed", "skewed"],
+            "bolt": ["bolt", "bold", "board", "boat", "bult", "bolte", "bohlt", "boy", "bowl", "ball", "pool", "paul", "bullets", "bullet"],
+            "wrench": ["wrench", "rench", "range", "french", "spanner", "rensh", "right","branch", "ranch", "wench", "trench"],
+            "measuring tape": ["measuring tape", "measuring tap", "tape", "measure", "measuring the", "measuring", "measur", "measure tape"],
+            "hammer": ["hammer", "armor", "amor", "ammer", "hamer", "hamr", "mallet", "hummer", "however", "harvard", "homo", "rough"],
+            "plier": ["plier", "players", "pliers", "pryer", "player", "plyer", "pincher", "apply", "flyer", "flier", "liar", "lawyer"],
         }
+        
         
         # Initialize Text-to-Speech
         self.tts = pyttsx3.init()
