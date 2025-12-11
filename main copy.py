@@ -42,6 +42,7 @@ class MainWindow:
         # Camera frame
         self.current_frame = None
         self.photo = None
+        self.frame_update_scheduled = False
         
         # Initialize GUI
         self.init_ui()
@@ -242,10 +243,12 @@ class MainWindow:
             self.log("🤖 Initializing robot arm...", "info")
             self.arm_controller = RobotArmController(log_callback=self.log)
             
-            # Initialize camera
+            # Initialize camera with thread-safe callback
             self.log("📷 Starting camera...", "info")
-            self.camera_system = CameraSystem(log_callback=self.log, 
-                                             frame_callback=self.set_camera_frame)
+            self.camera_system = CameraSystem(
+                log_callback=self.log, 
+                frame_callback=self.handle_camera_frame
+            )
             self.camera_system.start()
             
             # Initialize other systems
@@ -267,26 +270,36 @@ class MainWindow:
         except Exception as e:
             self.log(f"❌ Failed to initialize systems: {e}", "error")
     
+    def handle_camera_frame(self, frame):
+        """Handle camera frames from background thread - DON'T update GUI here!"""
+        # Just store the frame, GUI update happens in main thread
+        self.current_frame = frame
+    
     def log(self, message, level="info"):
-        """Log message to logger"""
+        """Log message to logger - thread-safe"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         
-        # Color tags
-        self.logger_text.tag_config("info", foreground="#89b4fa")
-        self.logger_text.tag_config("success", foreground="#a6e3a1")
-        self.logger_text.tag_config("warning", foreground="#f9e2af")
-        self.logger_text.tag_config("error", foreground="#f38ba8")
-        self.logger_text.tag_config("system", foreground="#cba6f7")
+        # Use after() to schedule GUI update in main thread
+        def update_log():
+            # Color tags
+            self.logger_text.tag_config("info", foreground="#89b4fa")
+            self.logger_text.tag_config("success", foreground="#a6e3a1")
+            self.logger_text.tag_config("warning", foreground="#f9e2af")
+            self.logger_text.tag_config("error", foreground="#f38ba8")
+            self.logger_text.tag_config("system", foreground="#cba6f7")
+            
+            # Insert message
+            self.logger_text.insert(tk.END, f"[{timestamp}] {message}\n", level)
+            self.logger_text.see(tk.END)
+            
+            # Update status for important messages
+            if level == "error":
+                self.status_label.config(text=f"Status: Error - {message[:30]}...")
+            elif level == "success":
+                self.status_label.config(text=f"Status: {message[:40]}...")
         
-        # Insert message
-        self.logger_text.insert(tk.END, f"[{timestamp}] {message}\n", level)
-        self.logger_text.see(tk.END)
-        
-        # Update status for important messages
-        if level == "error":
-            self.status_label.config(text=f"Status: Error - {message[:30]}...")
-        elif level == "success":
-            self.status_label.config(text=f"Status: {message[:40]}...")
+        # Schedule the update in the main thread
+        self.root.after(0, update_log)
     
     def toggle_voice_control(self):
         """Toggle voice control on/off"""
@@ -343,14 +356,10 @@ class MainWindow:
         # Schedule next update
         self.root.after(100, self.update_voice_commands)
     
-    def set_camera_frame(self, frame):
-        """Set the current camera frame (called from camera thread)"""
-        self.current_frame = frame
-    
     def update_camera(self):
-        """Update camera display"""
-        if self.current_frame is not None:
-            try:
+        """Update camera display - runs in main thread"""
+        try:
+            if self.current_frame is not None:
                 # Convert BGR to RGB
                 rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
                 
@@ -359,22 +368,24 @@ class MainWindow:
                 max_h = self.camera_label.winfo_height() or 600  # Increased from 480
                 max_w = self.camera_label.winfo_width() or 640
                 
-                scale = min(max_w/w, max_h/h)
-                new_w, new_h = int(w * scale), int(h * scale)
-                
-                if new_w > 0 and new_h > 0:
-                    resized = cv2.resize(rgb_image, (new_w, new_h))
+                if max_h > 0 and max_w > 0:
+                    scale = min(max_w/w, max_h/h)
+                    new_w, new_h = int(w * scale), int(h * scale)
                     
-                    # Convert to ImageTk
-                    image = Image.fromarray(resized)
-                    self.photo = ImageTk.PhotoImage(image=image)
-                    self.camera_label.config(image=self.photo)
-                    
-            except Exception as e:
-                pass
+                    if new_w > 0 and new_h > 0:
+                        resized = cv2.resize(rgb_image, (new_w, new_h))
+                        
+                        # Convert to ImageTk
+                        image = Image.fromarray(resized)
+                        self.photo = ImageTk.PhotoImage(image=image)
+                        self.camera_label.config(image=self.photo)
+        except Exception as e:
+            # Don't log every frame error to avoid spam
+            if not self.frame_update_scheduled:
+                self.log(f"Camera display error: {e}", "warning")
         
         # Schedule next update
-        self.root.after(30, self.update_camera)
+        self.root.after(33, self.update_camera)  # ~30 FPS
     
     def prompt_for_tool(self):
         """Prompt user for which tool to fetch"""
@@ -524,29 +535,34 @@ class MainWindow:
             self.status_label.config(text="Status: Ready")
     
     def update_progress(self, value):
-        """Update progress bar"""
-        self.progress_bar["value"] = value
-        self.root.update_idletasks()
+        """Update progress bar - thread-safe"""
+        def update():
+            self.progress_bar["value"] = value
+        
+        self.root.after(0, update)
     
     def update_tools_list(self):
-        """Update the tools list widget with inventory info"""
-        self.tools_list.delete(0, tk.END)
-        
-        for tool_name in sorted(self.tool_mapping.keys()):
-            locations = self.tool_mapping[tool_name]
-            available = sum(1 for loc in locations if not loc.get("fetched", False))
-            total = len(locations)
+        """Update the tools list widget with inventory info - thread-safe"""
+        def update():
+            self.tools_list.delete(0, tk.END)
             
-            if available > 0:
-                if total > 1:
-                    self.tools_list.insert(tk.END, f"{tool_name.upper()} ({available}/{total} available)")
-                else:
-                    self.tools_list.insert(tk.END, f"{tool_name.upper()}")
+            for tool_name in sorted(self.tool_mapping.keys()):
+                locations = self.tool_mapping[tool_name]
+                available = sum(1 for loc in locations if not loc.get("fetched", False))
+                total = len(locations)
+                
+                if available > 0:
+                    if total > 1:
+                        self.tools_list.insert(tk.END, f"{tool_name.upper()} ({available}/{total} available)")
+                    else:
+                        self.tools_list.insert(tk.END, f"{tool_name.upper()}")
+            
+            if self.tool_mapping:
+                available_tools = sum(1 for tool in self.tool_mapping.values() 
+                                    if any(not loc.get("fetched", False) for loc in tool))
+                self.log(f"Updated tools list: {available_tools} tools available", "success")
         
-        if self.tool_mapping:
-            available_tools = sum(1 for tool in self.tool_mapping.values() 
-                                if any(not loc.get("fetched", False) for loc in tool))
-            self.log(f"Updated tools list: {available_tools} tools available", "success")
+        self.root.after(0, update)
     
     def go_home(self):
         """Move arm to home position"""
@@ -558,9 +574,12 @@ class MainWindow:
             self.log(f"❌ Failed to go home: {e}", "error")
     
     def update_info(self, *args):
-        """Update system information"""
-        text = "\n".join(args)
-        self.info_label.config(text=text)
+        """Update system information - thread-safe"""
+        def update():
+            text = "\n".join(args)
+            self.info_label.config(text=text)
+        
+        self.root.after(0, update)
     
     def clear_log(self):
         """Clear the logger"""
