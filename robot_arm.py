@@ -3,7 +3,6 @@ from Arm_Lib import Arm_Device
 
 class RobotArmController:
     def __init__(self, log_callback=None):
-        """Initialize arm with exact specified angles"""
         self.log_callback = log_callback
         self.log("Initializing robot arm...")
         
@@ -11,7 +10,6 @@ class RobotArmController:
             self.arm = Arm_Device()
             time.sleep(2)
             
-            # Servo mapping
             self.SERVO_BASE = 1
             self.SERVO_SHOULDER = 2  
             self.SERVO_ELBOW = 3
@@ -19,7 +17,6 @@ class RobotArmController:
             self.SERVO_WRIST_ROT = 5
             self.SERVO_GRIPPER = 6
             
-            # Positions
             self.INITIAL_POSITION = {
                 self.SERVO_BASE: 90,
                 self.SERVO_SHOULDER: 105,
@@ -48,10 +45,10 @@ class RobotArmController:
             }
             
             self.go_to_initial_position()
-            self.log("✅ Robot arm initialized successfully")
+            self.log("Robot arm initialized successfully")
             
         except Exception as e:
-            self.log(f"❌ Failed to initialize robot arm: {e}", "error")
+            self.log(f" Failed to initialize robot arm: {e}", "error")
             raise
     
     def log(self, message, level="info"):
@@ -110,4 +107,4 @@ class RobotArmController:
         self.log("Moving to home position...")
         self.arm.Arm_serial_servo_write6(90, 90, 90, 90, 90, 90, 2000)
         time.sleep(2)
-        self.log("✅ At home position")
+        self.log("At home position")

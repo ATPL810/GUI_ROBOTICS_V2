@@ -11,7 +11,6 @@ class AnalysisSystem:
         self.detections_data = {}
         self.grab_point_assignments = {}
         self.tool_mapping = {}
-        self.all_tool_locations = {}
         self.output_dir = None
     
     def log(self, message, level="info"):
@@ -22,17 +21,17 @@ class AnalysisSystem:
     
     def analyze_grab_points(self, snapshot_folder):
         """Run complete grab point analysis with duplicate handling"""
-        self.log("🔍 Starting enhanced grab point analysis...", "info")
+        self.log("Starting grab point analysis...", "info")
         self.snapshot_folder = snapshot_folder
         
         self.load_grab_points()
         self.parse_all_snapshots()
         self.assign_tools_to_grab_points()
-        self.generate_tool_mapping()
+        self.generate_tool_mapping_with_duplicates()
         self.save_json_mapping()
-        report_path = self.generate_master_report()
+        report_path = self.generate_master_report_with_duplicates()
         
-        self.log("✅ Grab point analysis COMPLETE!", "success")
+        self.log("Grab point analysis COMPLETE!", "success")
         return report_path
     
     def load_grab_points(self):
@@ -59,7 +58,7 @@ class AnalysisSystem:
         with open("config/grab_points.json", "w") as f:
             json.dump(self.grab_points, f, indent=2)
         
-        self.log(f"Loaded {sum(len(v) for v in self.grab_points.values())} grab points")
+        self.log(f"Loaded {sum(len(v) for v in self.grab_points.values())} grab points", "info")
     
     def parse_all_snapshots(self):
         """Parse detection data from all 3 snapshots"""
@@ -72,7 +71,7 @@ class AnalysisSystem:
                 "count": len(detections)
             }
             
-            self.log(f"{position}: {len(detections)} tools detected")
+            self.log(f"{position}: {len(detections)} tools detected", "info")
     
     def parse_snapshot_report(self, position_name):
         """Parse detection data from a snapshot's text report"""
@@ -96,7 +95,7 @@ class AnalysisSystem:
                     
                     class_match = re.search(r"Class:\s*([^\n]+)", block)
                     if class_match:
-                        detection["class_name"] = class_match.group(1).strip().lower()
+                        detection["class_name"] = class_match.group(1).strip()
                     
                     conf_match = re.search(r"Confidence:\s*([^\n]+)", block)
                     if conf_match:
@@ -121,13 +120,13 @@ class AnalysisSystem:
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
     def assign_tools_to_grab_points(self, max_distance=200):
-        """Assign the closest tool to each grab point with one-to-one mapping"""
+        """Assign the closest tool to each grab point"""
         self.log("Assigning tools to grab points...", "info")
         
         assignments = {}
         
         for position_name, grab_points in self.grab_points.items():
-            self.log(f"Processing {position_name}...")
+            self.log(f"Processing {position_name}...", "info")
             
             if position_name not in self.detections_data:
                 continue
@@ -140,7 +139,6 @@ class AnalysisSystem:
                         "class_name": "none",
                         "confidence": 0.0,
                         "distance": float('inf'),
-                        "tool_center": None,
                         "grab_point": (point_coords["x"], point_coords["y"])
                     }
                 continue
@@ -186,7 +184,7 @@ class AnalysisSystem:
                 }
                 
                 assigned_tools.add(tool_index)
-                self.log(f"  Point {point_id}: {detection['class_name']} ({pair['distance']:.1f}px)")
+                self.log(f"  Point {point_id}: {detection['class_name']} ({pair['distance']:.1f}px)", "info")
             
             for point_id, point_coords in grab_points.items():
                 if point_id not in assignments:
@@ -201,46 +199,38 @@ class AnalysisSystem:
         self.grab_point_assignments = assignments
         return assignments
     
-    def generate_tool_mapping(self):
-        """Generate reverse mapping from tool name to grab point with all locations"""
+    def generate_tool_mapping_with_duplicates(self):
+        """Generate mapping from tool name to ALL grab points (including duplicates)"""
         tool_mapping = {}
-        all_tool_locations = {}
         
         for point_id, assignment in self.grab_point_assignments.items():
             if assignment["class_name"] != "none":
-                tool_name = assignment["class_name"]
+                tool_name = assignment["class_name"].lower()
                 
                 if tool_name not in tool_mapping:
                     tool_mapping[tool_name] = []
-                    all_tool_locations[tool_name] = []
                 
-                location_data = {
+                tool_mapping[tool_name].append({
                     "grab_point": point_id,
                     "distance": assignment["distance"],
                     "confidence": assignment["confidence"],
                     "position": self.get_position_from_point_id(point_id),
-                    "position_desc": f"{self.get_position_from_point_id(point_id).replace('_', ' ')}",
-                    "fetched": False
-                }
-                
-                tool_mapping[tool_name].append(location_data)
-                all_tool_locations[tool_name].append(location_data)
+                    "position_desc": self.get_position_desc(self.get_position_from_point_id(point_id))
+                })
         
         # Sort each tool's locations by confidence (highest first)
         for tool_name in tool_mapping:
-            tool_mapping[tool_name].sort(key=lambda x: x["confidence"], reverse=True)
+            tool_mapping[tool_name].sort(key=lambda x: (-x["confidence"], x["distance"]))
         
-        # Store both mappings
         self.tool_mapping = tool_mapping
-        self.all_tool_locations = all_tool_locations
         
         if tool_mapping:
-            self.log("Tool mapping generated with duplicate handling:", "success")
+            self.log("Tool mapping generated (with duplicates):", "success")
             for tool_name, locations in tool_mapping.items():
                 if len(locations) > 1:
-                    self.log(f"  {tool_name}: {len(locations)} locations available")
+                    self.log(f"  {tool_name.upper():<15} → {len(locations)} locations", "info")
                 else:
-                    self.log(f"  {tool_name}: Point {locations[0]['grab_point']} ({locations[0]['confidence']*100:.1f}%)")
+                    self.log(f"  {tool_name.upper():<15} → Point {locations[0]['grab_point']} ({locations[0]['confidence']*100:.1f}%)", "info")
         
         return tool_mapping
     
@@ -253,6 +243,16 @@ class AnalysisSystem:
         elif point_id in ["H", "I"]:
             return "third_position"
         return "unknown"
+    
+    def get_position_desc(self, position):
+        """Get human-readable position description"""
+        if position == "initial_position":
+            return "initial position"
+        elif position == "second_position":
+            return "second position"
+        elif position == "third_position":
+            return "third position"
+        return position
     
     def save_json_mapping(self):
         """Save grab point assignments and tool mapping to JSON"""
@@ -267,34 +267,20 @@ class AnalysisSystem:
                 "grab_points_count": len(self.grab_point_assignments)
             },
             "grab_point_assignments": self.grab_point_assignments,
-            "tool_mapping": self.tool_mapping,
-            "all_tool_locations": self.all_tool_locations
+            "tool_mapping": self.tool_mapping
         }
         
         json_file = os.path.join(self.output_dir, "tool_mapping.json")
         with open(json_file, 'w') as f:
             json.dump(mapping_data, f, indent=2, default=str)
         
-        self.log(f"Saved JSON mapping to: {json_file}")
+        self.log(f"Saved JSON mapping to: {json_file}", "info")
         return json_file
     
-    def generate_master_report(self):
+    def generate_master_report_with_duplicates(self):
         """Generate comprehensive master report with duplicate handling"""
         total_points = len(self.grab_point_assignments)
         assigned_points = sum(1 for a in self.grab_point_assignments.values() if a["class_name"] != "none")
-        unassigned_points = total_points - assigned_points
-        
-        # Count unique tools and total tools (including duplicates)
-        unique_tools = set()
-        total_tools_count = 0
-        tool_counts = {}
-        
-        for assignment in self.grab_point_assignments.values():
-            if assignment["class_name"] != "none":
-                tool_name = assignment["class_name"]
-                unique_tools.add(tool_name)
-                total_tools_count += 1
-                tool_counts[tool_name] = tool_counts.get(tool_name, 0) + 1
         
         report_lines = []
         report_lines.append("=" * 75)
@@ -307,12 +293,11 @@ class AnalysisSystem:
         report_lines.append("-" * 40)
         report_lines.append(f"Total Grab Points Analyzed: {total_points}")
         report_lines.append(f"Points with Assigned Tools: {assigned_points}")
-        report_lines.append(f"Points without Tools: {unassigned_points}")
-        report_lines.append(f"Unique Tool Types: {len(unique_tools)}")
-        report_lines.append(f"Total Tools (including duplicates): {total_tools_count}")
+        report_lines.append(f"Points without Tools: {total_points - assigned_points}")
+        report_lines.append(f"Unique Tools: {len(self.tool_mapping)}")
         report_lines.append("")
         
-        report_lines.append("GRAB POINT TOOL ASSIGNMENTS:")
+        report_lines.append("GRAB POINT ASSIGNMENTS:")
         report_lines.append("=" * 75)
         
         for position_name, points in [("INITIAL POSITION", ["A", "B", "C", "D"]),
@@ -329,8 +314,7 @@ class AnalysisSystem:
                     else:
                         report_lines.append(f"  Point {point_id}: No tool assigned")
         
-        report_lines.append("\n" + "=" * 75)
-        report_lines.append("ALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
+        report_lines.append("\nALL TOOL LOCATIONS (INCLUDING DUPLICATES):")
         report_lines.append("-" * 40)
         
         if self.tool_mapping:
@@ -338,18 +322,17 @@ class AnalysisSystem:
                 if len(locations) > 1:
                     report_lines.append(f"\n{tool_name.upper()} ({len(locations)} locations):")
                     for i, loc in enumerate(locations, 1):
-                        star = "⭐ " if i == 1 else "  "
-                        position_desc = loc['position'].replace('_', ' ')
+                        star = "success " if i == 1 else "  "
+                        position_desc = self.get_position_desc(loc["position"])
                         report_lines.append(f"  {star}Point {loc['grab_point']}: {loc['confidence']*100:.1f}% ({position_desc})")
                 else:
                     report_lines.append(f"\n{tool_name.upper()} (1 location):")
-                    position_desc = locations[0]['position'].replace('_', ' ')
-                    report_lines.append(f"  ⭐ Point {locations[0]['grab_point']}: {locations[0]['confidence']*100:.1f}% ({position_desc})")
+                    position_desc = self.get_position_desc(locations[0]["position"])
+                    report_lines.append(f"  Point {locations[0]['grab_point']}: {locations[0]['confidence']*100:.1f}% ({position_desc})")
         else:
             report_lines.append("  No tools found")
         
-        report_lines.append("\n" + "=" * 75)
-        report_lines.append("ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):")
+        report_lines.append("\nROBOT ACTION PLAN (WITH DUPLICATE HANDLING):")
         report_lines.append("-" * 40)
         
         if self.tool_mapping:
@@ -358,16 +341,20 @@ class AnalysisSystem:
                     report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
                     report_lines.append(f"  Available at {len(locations)} locations:")
                     for i, loc in enumerate(locations, 1):
-                        star = "⭐ " if i == 1 else "  "
-                        report_lines.append(f"  {star}Point {loc['grab_point']} ({loc['position'].replace('_', ' ')})")
+                        star = " success " if i == 1 else "  "
+                        position_desc = self.get_position_desc(loc["position"])
+                        report_lines.append(f"  {star}Point {loc['grab_point']} ({position_desc})")
                     report_lines.append(f"  Will fetch from: Point {locations[0]['grab_point']} (highest confidence)")
                 else:
                     report_lines.append(f"\nWhen user requests '{tool_name.lower()}':")
-                    report_lines.append(f"  Will fetch from: Point {locations[0]['grab_point']}")
+                    position_desc = self.get_position_desc(locations[0]["position"])
+                    report_lines.append(f"  Will fetch from: Point {locations[0]['grab_point']} ({position_desc})")
+        else:
+            report_lines.append("  No action plan available (no tools mapped)")
         
         report_file = os.path.join(self.output_dir, "master_report.txt")
         with open(report_file, 'w') as f:
             f.write('\n'.join(report_lines))
         
-        self.log(f"Saved master report to: {report_file}")
+        self.log(f"Saved master report to: {report_file}", "info")
         return report_file

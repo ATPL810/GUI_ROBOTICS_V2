@@ -3,6 +3,7 @@ import time
 import cv2
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 from ultralytics import YOLO
 
 class SnapshotSystem:
@@ -14,7 +15,6 @@ class SnapshotSystem:
         self.output_dir = None
         self.all_snapshots = []
         
-        # Tool classes
         self.TOOL_CLASSES = ['Bolt', 'Hammer', 'Measuring Tape', 'Plier', 'Screwdriver', 'Wrench']
         self.TOOL_COLORS = [
             (0, 255, 0), (0, 0, 255), (255, 0, 0),
@@ -57,7 +57,15 @@ class SnapshotSystem:
     
     def capture_frame(self):
         """Capture a single frame from camera"""
-        return self.camera.capture_frame()
+        if self.camera.cap and self.camera.cap.isOpened():
+            for _ in range(3):
+                self.camera.cap.read()
+                time.sleep(0.1)
+            
+            ret, frame = self.camera.cap.read()
+            if ret:
+                return cv2.flip(frame, 1)
+        return None
     
     def detect_objects(self, frame):
         """Detect objects in frame"""
@@ -116,37 +124,32 @@ class SnapshotSystem:
     
     def take_snapshots_sequence(self):
         """Run the complete automatic snapshot sequence"""
-        self.log("🚀 Starting automatic snapshot sequence...", "success")
+        self.log("Starting automatic snapshot sequence...", "success")
         self.output_dir = self.create_output_directory()
         self.log(f"Output directory: {self.output_dir}")
         
         try:
-            # Step 1: Initial Position
-            self.log("\n🔹 STEP 1: INITIAL POSITION", "info")
+            self.log("\n STEP 1: INITIAL POSITION", "info")
             self.wait_for_stabilization(3, "Initial Position")
             snapshot1 = self.capture_and_save("initial_position", self.arm.INITIAL_POSITION[self.arm.SERVO_BASE])
             
-            # Step 2: Second Position
-            self.log("\n🔹 STEP 2: MOVING TO SECOND POSITION", "info")
+            self.log("\n STEP 2: MOVING TO SECOND POSITION", "info")
             self.arm.go_to_second_position()
             self.wait_for_stabilization(3, "Second Position")
             snapshot2 = self.capture_and_save("second_position", self.arm.SECOND_POSITION[self.arm.SERVO_BASE])
             
-            # Step 3: Third Position
-            self.log("\n🔹 STEP 3: MOVING TO THIRD POSITION", "info")
+            self.log("\n STEP 3: MOVING TO THIRD POSITION", "info")
             self.arm.go_to_third_position()
             self.wait_for_stabilization(3, "Third Position")
             snapshot3 = self.capture_and_save("third_position", self.arm.THIRD_POSITION[self.arm.SERVO_BASE])
             
-            # Step 4: Return to Initial
-            self.log("\n🔹 STEP 4: RETURNING TO INITIAL POSITION", "info")
+            self.log("\n STEP 4: RETURNING TO INITIAL POSITION", "info")
             time.sleep(3)
             self.arm.go_to_initial_position()
             
-            # Step 5: Finalize
             self.save_summary_report()
             
-            self.log("✅ Automatic snapshot sequence COMPLETE!", "success")
+            self.log("Automatic snapshot sequence COMPLETE!", "success")
             total_detections = sum(len(snap['detections']) for snap in self.all_snapshots)
             self.log(f"Snapshots taken: {len(self.all_snapshots)}", "info")
             self.log(f"Total objects detected: {total_detections}", "info")
@@ -154,7 +157,7 @@ class SnapshotSystem:
             return self.output_dir
             
         except Exception as e:
-            self.log(f"❌ Error during snapshot sequence: {e}", "error")
+            self.log(f"Error during snapshot sequence: {e}", "error")
             raise
     
     def wait_for_stabilization(self, seconds, position_name):
@@ -183,13 +186,11 @@ class SnapshotSystem:
         else:
             self.log("No objects detected", "warning")
         
-        # Annotate and save frame
         annotated_frame = self.annotate_frame(frame, detections, position_name, base_angle)
         filename = f"{self.output_dir}/{position_name}.jpg"
         cv2.imwrite(filename, annotated_frame)
         self.log(f"Saved snapshot: {filename}")
         
-        # Save detection data
         self.save_detection_data(position_name, detections, filename, base_angle)
         
         snapshot_info = {
@@ -197,7 +198,7 @@ class SnapshotSystem:
             'base_angle': base_angle,
             'filename': filename,
             'detections': detections,
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            'timestamp': datetime.now().strftime("%Y-%m-d %H:%M:%S")
         }
         self.all_snapshots.append(snapshot_info)
         
@@ -229,7 +230,6 @@ class SnapshotSystem:
                        (x1, y1 - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
-        # Add position info
         position_text = f"Position: {position_name} (Base: {base_angle}°)"
         cv2.putText(annotated, position_text,
                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
