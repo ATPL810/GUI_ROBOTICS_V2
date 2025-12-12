@@ -897,7 +897,7 @@ class GrabSystem:
                                 "confidence": confidence / 100,
                                 "position": position,
                                 "position_desc": position_desc,
-                                "fetched": False
+                                "fetched": False  # Initialize as not fetched
                             }
                             
                             tool_mapping[current_tool].append(location_data)
@@ -1156,6 +1156,7 @@ class GrabSystem:
                 else:
                     self.log(f"Last {tool_name.upper()} fetched!", "info")
             
+            # Return success - keep original return type for compatibility
             return True
         else:
             self.log(f"Failed to fetch {tool_name.upper()}", "error")
@@ -1589,12 +1590,25 @@ class ToolPromptDialog:
         )
         self.tools_listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=(5, 10))
         
+         # Populate list with counts
         for tool_name in sorted(self.tool_mapping.keys()):
-            self.tools_listbox.insert(tk.END, tool_name.upper())
+            locations = self.tool_mapping[tool_name]
+            total_count = len(locations)
+            available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+            
+            if total_count > 1:
+                display_text = f"{tool_name.upper()} ({available_count}/{total_count} available)"
+            else:
+                display_text = f"{tool_name.upper()} ({available_count}/{total_count} available)"
+            
+            self.tools_listbox.insert(tk.END, display_text)
+            
+            # Gray out if none available
+            if available_count == 0:
+                self.tools_listbox.itemconfig(tk.END, {'fg': '#585b70'})
         
         self.tools_listbox.bind('<<ListboxSelect>>', self.on_list_select)
         self.tools_listbox.bind('<Double-Button-1>', self.on_double_click)
-        
         # Or type manually
         type_label = tk.Label(
             self.dialog,
@@ -1642,21 +1656,66 @@ class ToolPromptDialog:
             width=12
         )
         self.cancel_button.pack(side=tk.LEFT, padx=10)
-    
+        
     def on_list_select(self, event):
         selection = self.tools_listbox.curselection()
         if selection:
-            tool_name = self.tools_listbox.get(selection[0])
-            self.tool_input.delete(0, tk.END)
-            self.tool_input.insert(0, tool_name.lower())
-            self.ok_button.config(state=tk.NORMAL)
-    
+            # Extract tool name from display text (removing count info)
+            display_text = self.tools_listbox.get(selection[0])
+            
+            # Extract just the tool name (before the first space)
+            # Example: "HAMMER (2/3 available)" -> "HAMMER"
+            tool_name_parts = display_text.split(' ')
+            if tool_name_parts:
+                tool_name = tool_name_parts[0].lower()
+                self.tool_input.delete(0, tk.END)
+                self.tool_input.insert(0, tool_name)
+                
+                # Check if tool has available instances
+                if tool_name in self.tool_mapping:
+                    locations = self.tool_mapping[tool_name]
+                    available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+                    if available_count > 0:
+                        self.ok_button.config(state=tk.NORMAL)
+                        self.tool_input.config(fg="#cdd6f4")
+                    else:
+                        self.ok_button.config(state=tk.DISABLED)
+                        self.tool_input.config(fg="#f38ba8")  # Red text if none available
+                else:
+                    self.ok_button.config(state=tk.NORMAL)
+                    self.tool_input.config(fg="#cdd6f4")
+        
     def on_double_click(self, event):
-        self.on_ok()
+        selection = self.tools_listbox.curselection()
+        if selection:
+            display_text = self.tools_listbox.get(selection[0])
+            tool_name_parts = display_text.split(' ')
+            if tool_name_parts:
+                tool_name = tool_name_parts[0].lower()
+                
+                # Check availability before allowing double-click fetch
+                if tool_name in self.tool_mapping:
+                    locations = self.tool_mapping[tool_name]
+                    available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+                    if available_count > 0:
+                        self.on_ok()
     
     def check_input(self, event):
-        if self.tool_input.get().strip():
-            self.ok_button.config(state=tk.NORMAL)
+        tool_name = self.tool_input.get().strip().lower()
+        if tool_name:
+            # Check if tool exists and has available instances
+            if tool_name in self.tool_mapping:
+                locations = self.tool_mapping[tool_name]
+                available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+                if available_count > 0:
+                    self.ok_button.config(state=tk.NORMAL)
+                    self.tool_input.config(fg="#cdd6f4")
+                else:
+                    self.ok_button.config(state=tk.DISABLED)
+                    self.tool_input.config(fg="#f38ba8")
+            else:
+                self.ok_button.config(state=tk.NORMAL)
+                self.tool_input.config(fg="#cdd6f4")
         else:
             self.ok_button.config(state=tk.DISABLED)
     
@@ -2157,6 +2216,9 @@ class MainWindow:
                     f"Last Tool: {tool_name.upper()}"
                 )
                 
+                # Update tools list to show new counts
+                self.root.after(0, self.update_tools_list)
+                
                 # Speak confirmation message AFTER successful fetch
                 confirmation_msg = f"Here is your {tool_name}! What else can I get for you?"
                 self.voice_system.speak(confirmation_msg)
@@ -2175,7 +2237,6 @@ class MainWindow:
                 self.log("Voice listening resumed", "info")
             
             self.root.after(0, self.enable_fetch_buttons)
-    
     def prompt_for_tool(self):
         """Prompt user for which tool to fetch"""
         if not self.tool_mapping:
@@ -2221,6 +2282,11 @@ class MainWindow:
                     f"Last Fetch: {datetime.now().strftime('%H:%M:%S')}",
                     f"Last Tool: {tool_name.upper()}"
                 )
+                # Update tools list to show new counts
+                 # Ensure we have the latest mapping
+                self.tool_mapping = self.grab_system.tool_mapping
+                # Update tools list to show new counts
+                self.root.after(0, self.update_tools_list)
             else:
                 self.log(f"Failed to fetch {tool_name.upper()}", "error")
                 
@@ -2312,9 +2378,14 @@ class MainWindow:
         self.voice_button.config(state=tk.NORMAL)
         self.home_button.config(state=tk.NORMAL)
         self.status_label.config(text="Status: Ready")
+
+    def refresh_tool_mapping(self):
+        """Refresh tool mapping from grab system"""
+        if self.grab_system:
+            self.tool_mapping = self.grab_system.tool_mapping    
     
     def update_tools_list(self):
-        """Update the tools list widget"""
+        """Update the tools list widget with counts"""
         self.tools_listbox.delete(0, tk.END)
         
         color_map = {
@@ -2323,24 +2394,41 @@ class MainWindow:
             "wrench": "#f9e2af",
             "plier": "#a6e3a1",
             "bolt": "#cba6f7",
-            "measuring tape": "#f5c2e7",
-            "tape": "#f5c2e7"
+            "measuring tape": "#f5c2e7"
         }
         
-        for tool_name in sorted(self.tool_mapping.keys()):
-            self.tools_listbox.insert(tk.END, tool_name.upper())
-            
-            # Find the right color
-            color = "#cdd6f4"  # Default color
-            for key, col in color_map.items():
-                if key in tool_name.lower():
-                    color = col
-                    break
-            
-            self.tools_listbox.itemconfig(tk.END, {'fg': color})
+        # Get current tool counts
+        if self.grab_system and self.tool_mapping:
+            for tool_name in sorted(self.tool_mapping.keys()):
+                # Calculate available and total counts
+                locations = self.tool_mapping[tool_name]
+                total_count = len(locations)
+                available_count = sum(1 for loc in locations if not loc.get("fetched", False))
+                
+                # Format display with counts
+                display_text = f"{tool_name.upper()} ({available_count}/{total_count})"
+                
+                self.tools_listbox.insert(tk.END, display_text)
+                
+                # Find the right color
+                color = "#cdd6f4"  # Default color
+                for key, col in color_map.items():
+                    if key in tool_name.lower():
+                        color = col
+                        break
+                
+                # Color code based on availability
+                if available_count == 0:
+                    color = "#585b70"  # Grayed out when none available
+                
+                self.tools_listbox.itemconfig(tk.END, {'fg': color})
         
         if self.tool_mapping:
-            self.log(f"Updated tools list with {len(self.tool_mapping)} tools", "success")
+            total_tools = sum(len(locs) for locs in self.tool_mapping.values())
+            available_tools = sum(1 for tool_name in self.tool_mapping 
+                                for loc in self.tool_mapping[tool_name] 
+                                if not loc.get("fetched", False))
+            self.log(f"Updated tools list: {available_tools}/{total_tools} tools available", "success")
     
     def go_home(self):
         """Move arm to home position"""
@@ -2352,8 +2440,18 @@ class MainWindow:
             self.log(f"Failed to go home: {e}", "error")
     
     def update_info(self, *args):
-        """Update system information"""
-        text = "\n".join(args)
+        """Update system information with tool counts"""
+        info_lines = list(args)
+        
+        # Add tool count information if available
+        if self.grab_system and self.tool_mapping:
+            total_tools = sum(len(locs) for locs in self.tool_mapping.values())
+            available_tools = sum(1 for tool_name in self.tool_mapping 
+                                for loc in self.tool_mapping[tool_name] 
+                                if not loc.get("fetched", False))
+            info_lines.append(f"Tools Available: {available_tools}/{total_tools}")
+        
+        text = "\n".join(info_lines)
         self.info_label.config(text=text)
     
     def clear_log(self):
