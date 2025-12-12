@@ -1,0 +1,75 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-11 16:50:46
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 6
+Points without Tools: 3
+Unique Tool Types: 5
+Total Tools (including duplicates): 6
+
+GRAB POINT TOOL ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: BOLT (88.9%)
+  Point B: HAMMER (95.4%)
+  Point C: No tool assigned
+  Point D: WRENCH (93.0%)
+
+SECOND POSITION:
+----------------------------------------
+  Point E: SCREWDRIVER (93.1%)
+  Point F: BOLT (86.5%)
+  Point G: No tool assigned
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (70.8%)
+  Point I: No tool assigned
+
+===========================================================================
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (2 locations):
+  ⭐ Point A: 88.9% (initial position)
+    Point F: 86.5% (second position)
+
+HAMMER (1 location):
+  ⭐ Point B: 95.4% (initial position)
+
+MEASURING TAPE (1 location):
+  ⭐ Point H: 70.8% (third position)
+
+SCREWDRIVER (1 location):
+  ⭐ Point E: 93.1% (second position)
+
+WRENCH (1 location):
+  ⭐ Point D: 93.0% (initial position)
+
+===========================================================================
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 2 locations:
+  ⭐ Point A (initial position)
+    Point F (second position)
+  Will fetch from: Point A (highest confidence)
+
+When user requests 'hammer':
+  Will fetch from: Point B
+
+When user requests 'measuring tape':
+  Will fetch from: Point H
+
+When user requests 'screwdriver':
+  Will fetch from: Point E
+
+When user requests 'wrench':
+  Will fetch from: Point D

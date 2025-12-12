@@ -7,7 +7,7 @@ def grab_point_E(arm, tool_type="hammer"):
     # Define grip force for each tool
     grip_forces = {
         "hammer": 165,
-        "screwdriver": 169,
+        "screwdriver": 167,
         "wrench": 176
     }
     

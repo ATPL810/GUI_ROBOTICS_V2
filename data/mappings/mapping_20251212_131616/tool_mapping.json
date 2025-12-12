@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T13:16:16.206438",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_131545",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "B": {
+      "class_name": "Hammer",
+      "confidence": 0.903,
+      "distance": 43.83206588788623,
+      "tool_center": [
+        258.5,
+        239.0
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "D": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "F": {
+      "class_name": "Bolt",
+      "confidence": 0.897,
+      "distance": 27.060118255469618,
+      "tool_center": [
+        324.0,
+        142.5
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Screwdriver",
+      "confidence": 0.9520000000000001,
+      "distance": 47.885279575251516,
+      "tool_center": [
+        218.0,
+        263.0
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "Measuring Tape",
+      "confidence": 0.495,
+      "distance": 79.81227975693966,
+      "tool_center": [
+        209.0,
+        363.0
+      ],
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "hammer": [
+      {
+        "grab_point": "B",
+        "distance": 43.83206588788623,
+        "confidence": 0.903,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "bolt": [
+      {
+        "grab_point": "F",
+        "distance": 27.060118255469618,
+        "confidence": 0.897,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "screwdriver": [
+      {
+        "grab_point": "E",
+        "distance": 47.885279575251516,
+        "confidence": 0.9520000000000001,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "measuring tape": [
+      {
+        "grab_point": "H",
+        "distance": 79.81227975693966,
+        "confidence": 0.495,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ]
+  }
+}

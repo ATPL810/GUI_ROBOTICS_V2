@@ -1,0 +1,9 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: initial_position
+Base Servo Angle: 90°
+Image File: initial_position.jpg
+Timestamp: 2025-12-12 12:41:55
+Total Objects Detected: 0
+============================================================
+

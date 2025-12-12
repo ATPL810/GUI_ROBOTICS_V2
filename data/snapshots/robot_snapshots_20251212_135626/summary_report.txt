@@ -1,0 +1,90 @@
+ROBOT ARM AUTOMATIC SNAPSHOT SYSTEM - SUMMARY REPORT
+======================================================================
+Report generated: 2025-12-12 13:56:54
+Total snapshots taken: 9
+======================================================================
+
+TOTAL OBJECTS DETECTED: 26
+
+SNAPSHOT SUMMARY BY POSITION:
+--------------------------------------------------
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:54:07
+  Image: initial_position.jpg
+  Objects detected: 4
+  Detected objects:
+    • Wrench: 94.3%
+    • Bolt: 92.8%
+    • Bolt: 92.3%
+    • Wrench: 89.4%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:54:16
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.5%
+    • Hammer: 91.0%
+    • Bolt: 89.7%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:54:24
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Measuring Tape: 90.8%
+    • Screwdriver: 88.0%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:54:46
+  Image: initial_position.jpg
+  Objects detected: 4
+  Detected objects:
+    • Wrench: 94.4%
+    • Bolt: 92.2%
+    • Bolt: 92.0%
+    • Wrench: 88.6%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:54:54
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.3%
+    • Hammer: 90.9%
+    • Bolt: 90.5%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:55:02
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Measuring Tape: 89.4%
+    • Screwdriver: 88.3%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:56:32
+  Image: initial_position.jpg
+  Objects detected: 4
+  Detected objects:
+    • Wrench: 95.1%
+    • Bolt: 93.0%
+    • Bolt: 90.8%
+    • Wrench: 88.0%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:56:41
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.9%
+    • Hammer: 89.0%
+    • Bolt: 86.1%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:56:49
+  Image: third_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Measuring Tape: 77.1%

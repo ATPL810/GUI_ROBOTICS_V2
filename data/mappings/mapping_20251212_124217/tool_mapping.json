@@ -1,0 +1,107 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T12:42:17.502712",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_124150",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "B": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "D": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "E": {
+      "class_name": "Screwdriver",
+      "confidence": 0.898,
+      "distance": 36.173194495371845,
+      "tool_center": [
+        232.5,
+        263.5
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "F": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "G": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "screwdriver": [
+      {
+        "grab_point": "E",
+        "distance": 36.173194495371845,
+        "confidence": 0.898,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ]
+  }
+}

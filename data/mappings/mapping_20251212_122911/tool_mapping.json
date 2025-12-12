@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T12:29:11.665650",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_122843",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "B": {
+      "class_name": "Screwdriver",
+      "confidence": 0.9259999999999999,
+      "distance": 27.064737205448715,
+      "tool_center": [
+        254.5,
+        255.5
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "D": {
+      "class_name": "Wrench",
+      "confidence": 0.889,
+      "distance": 53.20009398487939,
+      "tool_center": [
+        542.5,
+        268.0
+      ],
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Wrench",
+      "confidence": 0.86,
+      "distance": 41.00304866714181,
+      "tool_center": [
+        227.5,
+        265.0
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "F": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "G": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "screwdriver": [
+      {
+        "grab_point": "B",
+        "distance": 27.064737205448715,
+        "confidence": 0.9259999999999999,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 53.20009398487939,
+        "confidence": 0.889,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "E",
+        "distance": 41.00304866714181,
+        "confidence": 0.86,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ]
+  }
+}

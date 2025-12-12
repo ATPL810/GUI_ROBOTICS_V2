@@ -1,0 +1,68 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-12 13:50:10
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 5
+Points without Tools: 4
+Unique Tools: 5
+
+GRAB POINT ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: No tool assigned
+  Point B: No tool assigned
+  Point C: No tool assigned
+  Point D: No tool assigned
+
+SECOND POSITION:
+----------------------------------------
+  Point E: HAMMER (90.9%)
+  Point F: BOLT (89.9%)
+  Point G: PLIER (97.5%)
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (88.3%)
+  Point I: SCREWDRIVER (88.9%)
+
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (1 location):
+  Point F: 89.9% (second position)
+
+HAMMER (1 location):
+  Point E: 90.9% (second position)
+
+MEASURING TAPE (1 location):
+  Point H: 88.3% (third position)
+
+PLIER (1 location):
+  Point G: 97.5% (second position)
+
+SCREWDRIVER (1 location):
+  Point I: 88.9% (third position)
+
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Will fetch from: Point F (second position)
+
+When user requests 'hammer':
+  Will fetch from: Point E (second position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (third position)
+
+When user requests 'plier':
+  Will fetch from: Point G (second position)
+
+When user requests 'screwdriver':
+  Will fetch from: Point I (third position)

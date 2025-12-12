@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T15:13:07.201167",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_151236",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "B": {
+      "class_name": "Wrench",
+      "confidence": 0.773,
+      "distance": 29.410882339705484,
+      "tool_center": [
+        252.0,
+        252.0
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "C": {
+      "class_name": "Bolt",
+      "confidence": 0.93,
+      "distance": 58.63659267044769,
+      "tool_center": [
+        356.5,
+        179.0
+      ],
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "D": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.8859999999999999,
+      "distance": 68.50182479321262,
+      "tool_center": [
+        191.5,
+        240.5
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "Plier",
+      "confidence": 0.9620000000000001,
+      "distance": 142.26208208795484,
+      "tool_center": [
+        457.5,
+        281.5
+      ],
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "F": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "I": {
+      "class_name": "Screwdriver",
+      "confidence": 0.7909999999999999,
+      "distance": 61.32087735836792,
+      "tool_center": [
+        409.5,
+        150.0
+      ],
+      "grab_point": [
+        470,
+        140
+      ]
+    },
+    "H": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        160,
+        300
+      ]
+    }
+  },
+  "tool_mapping": {
+    "wrench": [
+      {
+        "grab_point": "B",
+        "distance": 29.410882339705484,
+        "confidence": 0.773,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "bolt": [
+      {
+        "grab_point": "C",
+        "distance": 58.63659267044769,
+        "confidence": 0.93,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "hammer": [
+      {
+        "grab_point": "E",
+        "distance": 68.50182479321262,
+        "confidence": 0.8859999999999999,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "plier": [
+      {
+        "grab_point": "G",
+        "distance": 142.26208208795484,
+        "confidence": 0.9620000000000001,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "screwdriver": [
+      {
+        "grab_point": "I",
+        "distance": 61.32087735836792,
+        "confidence": 0.7909999999999999,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: second_position
+Base Servo Angle: 40°
+Image File: second_position.jpg
+Timestamp: 2025-12-11 18:57:20
+Total Objects Detected: 3
+============================================================
+
+DETECTED OBJECTS:
+----------------------------------------
+Object #1:
+  Class: Plier
+  Confidence: 97.2%
+  Bounding Box: (363, 85, 546, 458)
+------------------------------
+Object #2:
+  Class: Hammer
+  Confidence: 92.1%
+  Bounding Box: (25, 0, 356, 474)
+------------------------------
+Object #3:
+  Class: Bolt
+  Confidence: 89.5%
+  Bounding Box: (287, 85, 354, 202)
+------------------------------

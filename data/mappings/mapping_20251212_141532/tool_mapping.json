@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T14:15:32.094100",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_141501",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "A": {
+      "class_name": "Bolt",
+      "confidence": 0.925,
+      "distance": 27.85677655436824,
+      "tool_center": [
+        101.0,
+        270.0
+      ],
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "B": {
+      "class_name": "Wrench",
+      "confidence": 0.785,
+      "distance": 27.95084971874737,
+      "tool_center": [
+        248.0,
+        252.5
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "D": {
+      "class_name": "Wrench",
+      "confidence": 0.9390000000000001,
+      "distance": 51.03920062069938,
+      "tool_center": [
+        529.0,
+        258.0
+      ],
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "F": {
+      "class_name": "Bolt",
+      "confidence": 0.903,
+      "distance": 19.90602923739438,
+      "tool_center": [
+        319.5,
+        151.0
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.8959999999999999,
+      "distance": 66.04733151308992,
+      "tool_center": [
+        194.0,
+        237.5
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "Plier",
+      "confidence": 0.98,
+      "distance": 146.70548728660424,
+      "tool_center": [
+        455.5,
+        276.5
+      ],
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "I": {
+      "class_name": "Screwdriver",
+      "confidence": 0.831,
+      "distance": 42.64387412044079,
+      "tool_center": [
+        427.5,
+        136.5
+      ],
+      "grab_point": [
+        470,
+        140
+      ]
+    },
+    "H": {
+      "class_name": "Measuring Tape",
+      "confidence": 0.88,
+      "distance": 83.42961105027399,
+      "tool_center": [
+        195.5,
+        375.5
+      ],
+      "grab_point": [
+        160,
+        300
+      ]
+    }
+  },
+  "tool_mapping": {
+    "bolt": [
+      {
+        "grab_point": "A",
+        "distance": 27.85677655436824,
+        "confidence": 0.925,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "F",
+        "distance": 19.90602923739438,
+        "confidence": 0.903,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 51.03920062069938,
+        "confidence": 0.9390000000000001,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "B",
+        "distance": 27.95084971874737,
+        "confidence": 0.785,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "hammer": [
+      {
+        "grab_point": "E",
+        "distance": 66.04733151308992,
+        "confidence": 0.8959999999999999,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "plier": [
+      {
+        "grab_point": "G",
+        "distance": 146.70548728660424,
+        "confidence": 0.98,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "screwdriver": [
+      {
+        "grab_point": "I",
+        "distance": 42.64387412044079,
+        "confidence": 0.831,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ],
+    "measuring tape": [
+      {
+        "grab_point": "H",
+        "distance": 83.42961105027399,
+        "confidence": 0.88,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ]
+  }
+}

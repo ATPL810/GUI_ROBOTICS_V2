@@ -1,0 +1,16 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: second_position
+Base Servo Angle: 40°
+Image File: second_position.jpg
+Timestamp: 2025-12-12 12:33:15
+Total Objects Detected: 1
+============================================================
+
+DETECTED OBJECTS:
+----------------------------------------
+Object #1:
+  Class: Screwdriver
+  Confidence: 93.8%
+  Bounding Box: (96, 60, 335, 472)
+------------------------------

@@ -1,0 +1,82 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-12 13:49:11
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 8
+Points without Tools: 1
+Unique Tools: 6
+
+GRAB POINT ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: No tool assigned
+  Point B: WRENCH (92.9%)
+  Point C: BOLT (90.2%)
+  Point D: WRENCH (94.7%)
+
+SECOND POSITION:
+----------------------------------------
+  Point E: HAMMER (89.6%)
+  Point F: BOLT (90.0%)
+  Point G: PLIER (97.2%)
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (87.5%)
+  Point I: SCREWDRIVER (88.9%)
+
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (2 locations):
+  success Point C: 90.2% (initial position)
+    Point F: 90.0% (second position)
+
+HAMMER (1 location):
+  Point E: 89.6% (second position)
+
+MEASURING TAPE (1 location):
+  Point H: 87.5% (third position)
+
+PLIER (1 location):
+  Point G: 97.2% (second position)
+
+SCREWDRIVER (1 location):
+  Point I: 88.9% (third position)
+
+WRENCH (2 locations):
+  success Point D: 94.7% (initial position)
+    Point B: 92.9% (initial position)
+
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 2 locations:
+   success Point C (initial position)
+    Point F (second position)
+  Will fetch from: Point C (highest confidence)
+
+When user requests 'hammer':
+  Will fetch from: Point E (second position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (third position)
+
+When user requests 'plier':
+  Will fetch from: Point G (second position)
+
+When user requests 'screwdriver':
+  Will fetch from: Point I (third position)
+
+When user requests 'wrench':
+  Available at 2 locations:
+   success Point D (initial position)
+    Point B (initial position)
+  Will fetch from: Point D (highest confidence)

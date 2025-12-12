@@ -1,0 +1,72 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-12 14:18:06
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 6
+Points without Tools: 3
+Unique Tools: 5
+
+GRAB POINT ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: No tool assigned
+  Point B: WRENCH (68.4%)
+  Point C: No tool assigned
+  Point D: WRENCH (93.8%)
+
+SECOND POSITION:
+----------------------------------------
+  Point E: HAMMER (83.2%)
+  Point F: BOLT (91.8%)
+  Point G: No tool assigned
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (87.3%)
+  Point I: SCREWDRIVER (87.7%)
+
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (1 location):
+  Point F: 91.8% (second position)
+
+HAMMER (1 location):
+  Point E: 83.2% (second position)
+
+MEASURING TAPE (1 location):
+  Point H: 87.3% (third position)
+
+SCREWDRIVER (1 location):
+  Point I: 87.7% (third position)
+
+WRENCH (2 locations):
+  success Point D: 93.8% (initial position)
+    Point B: 68.4% (initial position)
+
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Will fetch from: Point F (second position)
+
+When user requests 'hammer':
+  Will fetch from: Point E (second position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (third position)
+
+When user requests 'screwdriver':
+  Will fetch from: Point I (third position)
+
+When user requests 'wrench':
+  Available at 2 locations:
+   success Point D (initial position)
+    Point B (initial position)
+  Will fetch from: Point D (highest confidence)

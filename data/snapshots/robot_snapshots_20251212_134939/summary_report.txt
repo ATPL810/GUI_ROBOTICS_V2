@@ -1,0 +1,85 @@
+ROBOT ARM AUTOMATIC SNAPSHOT SYSTEM - SUMMARY REPORT
+======================================================================
+Report generated: 2025-12-12 13:50:07
+Total snapshots taken: 9
+======================================================================
+
+TOTAL OBJECTS DETECTED: 22
+
+SNAPSHOT SUMMARY BY POSITION:
+--------------------------------------------------
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:46:07
+  Image: initial_position.jpg
+  Objects detected: 4
+  Detected objects:
+    • Wrench: 93.8%
+    • Bolt: 93.1%
+    • Bolt: 90.5%
+    • Wrench: 89.8%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:46:16
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.0%
+    • Hammer: 88.9%
+    • Bolt: 86.0%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:46:24
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Measuring Tape: 86.4%
+    • Screwdriver: 77.2%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:48:48
+  Image: initial_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Wrench: 94.7%
+    • Wrench: 92.9%
+    • Bolt: 90.2%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:48:56
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.2%
+    • Bolt: 90.0%
+    • Hammer: 89.6%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:49:04
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Screwdriver: 88.9%
+    • Measuring Tape: 87.5%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 13:49:45
+  Image: initial_position.jpg
+  Objects detected: 0
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 13:49:53
+  Image: second_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Plier: 97.5%
+    • Hammer: 90.9%
+    • Bolt: 89.9%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 13:50:02
+  Image: third_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Screwdriver: 88.9%
+    • Measuring Tape: 88.3%

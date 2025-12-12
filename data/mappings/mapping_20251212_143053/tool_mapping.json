@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T14:30:53.970617",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_143021",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "B": {
+      "class_name": "Wrench",
+      "confidence": 0.757,
+      "distance": 23.926972228010797,
+      "tool_center": [
+        253.5,
+        258.5
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "A": {
+      "class_name": "Bolt",
+      "confidence": 0.9279999999999999,
+      "distance": 34.471002306286366,
+      "tool_center": [
+        106.5,
+        274.0
+      ],
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "D": {
+      "class_name": "Wrench",
+      "confidence": 0.9440000000000001,
+      "distance": 49.489897959078476,
+      "tool_center": [
+        524.5,
+        257.0
+      ],
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "C": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "F": {
+      "class_name": "Bolt",
+      "confidence": 0.887,
+      "distance": 25.144581921360317,
+      "tool_center": [
+        324.0,
+        147.5
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.903,
+      "distance": 66.007575322837,
+      "tool_center": [
+        194.0,
+        239.0
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "Plier",
+      "confidence": 0.971,
+      "distance": 140.14010846292362,
+      "tool_center": [
+        454.5,
+        283.0
+      ],
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "I": {
+      "class_name": "Screwdriver",
+      "confidence": 0.7440000000000001,
+      "distance": 73.5,
+      "tool_center": [
+        396.5,
+        140.0
+      ],
+      "grab_point": [
+        470,
+        140
+      ]
+    },
+    "H": {
+      "class_name": "Measuring Tape",
+      "confidence": 0.9009999999999999,
+      "distance": 82.28760538501531,
+      "tool_center": [
+        197.0,
+        373.5
+      ],
+      "grab_point": [
+        160,
+        300
+      ]
+    }
+  },
+  "tool_mapping": {
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 49.489897959078476,
+        "confidence": 0.9440000000000001,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "B",
+        "distance": 23.926972228010797,
+        "confidence": 0.757,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "bolt": [
+      {
+        "grab_point": "A",
+        "distance": 34.471002306286366,
+        "confidence": 0.9279999999999999,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "F",
+        "distance": 25.144581921360317,
+        "confidence": 0.887,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "hammer": [
+      {
+        "grab_point": "E",
+        "distance": 66.007575322837,
+        "confidence": 0.903,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "plier": [
+      {
+        "grab_point": "G",
+        "distance": 140.14010846292362,
+        "confidence": 0.971,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "screwdriver": [
+      {
+        "grab_point": "I",
+        "distance": 73.5,
+        "confidence": 0.7440000000000001,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ],
+    "measuring tape": [
+      {
+        "grab_point": "H",
+        "distance": 82.28760538501531,
+        "confidence": 0.9009999999999999,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ]
+  }
+}

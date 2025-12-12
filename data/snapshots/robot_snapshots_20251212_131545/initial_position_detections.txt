@@ -1,0 +1,16 @@
+ROBOT ARM SNAPSHOT DETECTION REPORT
+============================================================
+Position: initial_position
+Base Servo Angle: 90°
+Image File: initial_position.jpg
+Timestamp: 2025-12-12 13:15:52
+Total Objects Detected: 1
+============================================================
+
+DETECTED OBJECTS:
+----------------------------------------
+Object #1:
+  Class: Hammer
+  Confidence: 90.3%
+  Bounding Box: (136, 0, 381, 478)
+------------------------------

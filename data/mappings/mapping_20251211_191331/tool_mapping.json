@@ -1,0 +1,123 @@
+{
+  "metadata": {
+    "generated": "2025-12-11T19:13:31.772584",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251211_191303",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "C": {
+      "class_name": "Bolt",
+      "confidence": 0.927,
+      "distance": 53.25645500782041,
+      "tool_center": [
+        361.5,
+        177.0
+      ],
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "A": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "B": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "D": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.8220000000000001,
+      "distance": 12.5,
+      "tool_center": [
+        247.5,
+        240.0
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "F": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "G": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "tool_center": null,
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "H": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        160,
+        300
+      ]
+    },
+    "I": {
+      "class_name": "none",
+      "confidence": 0.0,
+      "distance": Infinity,
+      "grab_point": [
+        470,
+        140
+      ]
+    }
+  },
+  "tool_mapping": {
+    "bolt": [
+      {
+        "grab_point": "C",
+        "distance": 53.25645500782041,
+        "confidence": 0.927,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "hammer": [
+      {
+        "grab_point": "E",
+        "distance": 12.5,
+        "confidence": 0.8220000000000001,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ]
+  }
+}

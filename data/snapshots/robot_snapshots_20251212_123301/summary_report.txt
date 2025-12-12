@@ -1,0 +1,91 @@
+ROBOT ARM AUTOMATIC SNAPSHOT SYSTEM - SUMMARY REPORT
+======================================================================
+Report generated: 2025-12-12 12:33:29
+Total snapshots taken: 12
+======================================================================
+
+TOTAL OBJECTS DETECTED: 13
+
+SNAPSHOT SUMMARY BY POSITION:
+--------------------------------------------------
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 12:21:56
+  Image: initial_position.jpg
+  Objects detected: 3
+  Detected objects:
+    • Bolt: 94.0%
+    • Hammer: 93.2%
+    • Bolt: 91.1%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 12:22:04
+  Image: second_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Screwdriver: 92.8%
+    • Bolt: 91.5%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 12:22:12
+  Image: third_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Measuring Tape: 65.4%
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 12:26:55
+  Image: initial_position.jpg
+  Objects detected: 0
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 12:27:04
+  Image: second_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Wrench: 91.2%
+    • Bolt: 90.8%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 12:27:13
+  Image: third_position.jpg
+  Objects detected: 0
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 12:28:48
+  Image: initial_position.jpg
+  Objects detected: 2
+  Detected objects:
+    • Screwdriver: 92.6%
+    • Wrench: 88.9%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 12:28:57
+  Image: second_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Wrench: 86.0%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 12:29:05
+  Image: third_position.jpg
+  Objects detected: 0
+
+INITIAL_POSITION (Base: 90°):
+  Time: 2025-12-d 12:33:07
+  Image: initial_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Hammer: 89.0%
+
+SECOND_POSITION (Base: 40°):
+  Time: 2025-12-d 12:33:15
+  Image: second_position.jpg
+  Objects detected: 1
+  Detected objects:
+    • Screwdriver: 93.8%
+
+THIRD_POSITION (Base: 1°):
+  Time: 2025-12-d 12:33:23
+  Image: third_position.jpg
+  Objects detected: 0

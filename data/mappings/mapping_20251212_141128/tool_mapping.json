@@ -1,0 +1,203 @@
+{
+  "metadata": {
+    "generated": "2025-12-12T14:11:28.997086",
+    "snapshot_folder": "data/snapshots/robot_snapshots_20251212_141057",
+    "grab_points_count": 9
+  },
+  "grab_point_assignments": {
+    "A": {
+      "class_name": "Bolt",
+      "confidence": 0.9209999999999999,
+      "distance": 25.894014752448104,
+      "tool_center": [
+        100.5,
+        264.5
+      ],
+      "grab_point": [
+        75,
+        260
+      ]
+    },
+    "B": {
+      "class_name": "Wrench",
+      "confidence": 0.885,
+      "distance": 37.473323845103465,
+      "tool_center": [
+        255.0,
+        244.5
+      ],
+      "grab_point": [
+        243,
+        280
+      ]
+    },
+    "C": {
+      "class_name": "Bolt",
+      "confidence": 0.9259999999999999,
+      "distance": 52.73755777432247,
+      "tool_center": [
+        361.0,
+        174.5
+      ],
+      "grab_point": [
+        410,
+        155
+      ]
+    },
+    "D": {
+      "class_name": "Wrench",
+      "confidence": 0.9640000000000001,
+      "distance": 74.66759672039807,
+      "tool_center": [
+        505.0,
+        225.5
+      ],
+      "grab_point": [
+        500,
+        300
+      ]
+    },
+    "F": {
+      "class_name": "Bolt",
+      "confidence": 0.8859999999999999,
+      "distance": 24.62214450449026,
+      "tool_center": [
+        322.5,
+        145.0
+      ],
+      "grab_point": [
+        300,
+        155
+      ]
+    },
+    "E": {
+      "class_name": "Hammer",
+      "confidence": 0.897,
+      "distance": 66.04733151308992,
+      "tool_center": [
+        194.0,
+        237.5
+      ],
+      "grab_point": [
+        260,
+        240
+      ]
+    },
+    "G": {
+      "class_name": "Plier",
+      "confidence": 0.978,
+      "distance": 152.82997088267732,
+      "tool_center": [
+        459.0,
+        271.0
+      ],
+      "grab_point": [
+        425,
+        420
+      ]
+    },
+    "I": {
+      "class_name": "Screwdriver",
+      "confidence": 0.795,
+      "distance": 57.2647360947381,
+      "tool_center": [
+        413.0,
+        134.5
+      ],
+      "grab_point": [
+        470,
+        140
+      ]
+    },
+    "H": {
+      "class_name": "Measuring Tape",
+      "confidence": 0.888,
+      "distance": 78.50159234053791,
+      "tool_center": [
+        196.5,
+        369.5
+      ],
+      "grab_point": [
+        160,
+        300
+      ]
+    }
+  },
+  "tool_mapping": {
+    "bolt": [
+      {
+        "grab_point": "C",
+        "distance": 52.73755777432247,
+        "confidence": 0.9259999999999999,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "A",
+        "distance": 25.894014752448104,
+        "confidence": 0.9209999999999999,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "F",
+        "distance": 24.62214450449026,
+        "confidence": 0.8859999999999999,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "wrench": [
+      {
+        "grab_point": "D",
+        "distance": 74.66759672039807,
+        "confidence": 0.9640000000000001,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      },
+      {
+        "grab_point": "B",
+        "distance": 37.473323845103465,
+        "confidence": 0.885,
+        "position": "initial_position",
+        "position_desc": "initial position"
+      }
+    ],
+    "hammer": [
+      {
+        "grab_point": "E",
+        "distance": 66.04733151308992,
+        "confidence": 0.897,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "plier": [
+      {
+        "grab_point": "G",
+        "distance": 152.82997088267732,
+        "confidence": 0.978,
+        "position": "second_position",
+        "position_desc": "second position"
+      }
+    ],
+    "screwdriver": [
+      {
+        "grab_point": "I",
+        "distance": 57.2647360947381,
+        "confidence": 0.795,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ],
+    "measuring tape": [
+      {
+        "grab_point": "H",
+        "distance": 78.50159234053791,
+        "confidence": 0.888,
+        "position": "third_position",
+        "position_desc": "third position"
+      }
+    ]
+  }
+}

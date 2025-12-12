@@ -1,0 +1,78 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-12 13:56:56
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 8
+Points without Tools: 1
+Unique Tools: 5
+
+GRAB POINT ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: BOLT (93.0%)
+  Point B: WRENCH (88.0%)
+  Point C: BOLT (90.8%)
+  Point D: WRENCH (95.1%)
+
+SECOND POSITION:
+----------------------------------------
+  Point E: HAMMER (89.0%)
+  Point F: BOLT (86.1%)
+  Point G: PLIER (97.9%)
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (77.1%)
+  Point I: No tool assigned
+
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (3 locations):
+  success Point A: 93.0% (initial position)
+    Point C: 90.8% (initial position)
+    Point F: 86.1% (second position)
+
+HAMMER (1 location):
+  Point E: 89.0% (second position)
+
+MEASURING TAPE (1 location):
+  Point H: 77.1% (third position)
+
+PLIER (1 location):
+  Point G: 97.9% (second position)
+
+WRENCH (2 locations):
+  success Point D: 95.1% (initial position)
+    Point B: 88.0% (initial position)
+
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 3 locations:
+   success Point A (initial position)
+    Point C (initial position)
+    Point F (second position)
+  Will fetch from: Point A (highest confidence)
+
+When user requests 'hammer':
+  Will fetch from: Point E (second position)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (third position)
+
+When user requests 'plier':
+  Will fetch from: Point G (second position)
+
+When user requests 'wrench':
+  Available at 2 locations:
+   success Point D (initial position)
+    Point B (initial position)
+  Will fetch from: Point D (highest confidence)

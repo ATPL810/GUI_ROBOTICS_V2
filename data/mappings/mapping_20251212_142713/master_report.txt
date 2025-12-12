@@ -1,0 +1,76 @@
+===========================================================================
+                    GARAGE ASSISTANT - TOOL MAPPING REPORT
+===========================================================================
+Generated: 2025-12-12 14:27:13
+
+SUMMARY:
+----------------------------------------
+Total Grab Points Analyzed: 9
+Points with Assigned Tools: 7
+Points without Tools: 2
+Unique Tools: 5
+
+GRAB POINT ASSIGNMENTS:
+===========================================================================
+
+INITIAL POSITION:
+----------------------------------------
+  Point A: BOLT (91.5%)
+  Point B: WRENCH (82.8%)
+  Point C: No tool assigned
+  Point D: WRENCH (94.8%)
+
+SECOND POSITION:
+----------------------------------------
+  Point E: No tool assigned
+  Point F: BOLT (90.0%)
+  Point G: PLIER (97.0%)
+
+THIRD POSITION:
+----------------------------------------
+  Point H: MEASURING TAPE (88.6%)
+  Point I: SCREWDRIVER (79.2%)
+
+ALL TOOL LOCATIONS (INCLUDING DUPLICATES):
+----------------------------------------
+
+BOLT (2 locations):
+  success Point A: 91.5% (initial position)
+    Point F: 90.0% (second position)
+
+MEASURING TAPE (1 location):
+  Point H: 88.6% (third position)
+
+PLIER (1 location):
+  Point G: 97.0% (second position)
+
+SCREWDRIVER (1 location):
+  Point I: 79.2% (third position)
+
+WRENCH (2 locations):
+  success Point D: 94.8% (initial position)
+    Point B: 82.8% (initial position)
+
+ROBOT ACTION PLAN (WITH DUPLICATE HANDLING):
+----------------------------------------
+
+When user requests 'bolt':
+  Available at 2 locations:
+   success Point A (initial position)
+    Point F (second position)
+  Will fetch from: Point A (highest confidence)
+
+When user requests 'measuring tape':
+  Will fetch from: Point H (third position)
+
+When user requests 'plier':
+  Will fetch from: Point G (second position)
+
+When user requests 'screwdriver':
+  Will fetch from: Point I (third position)
+
+When user requests 'wrench':
+  Available at 2 locations:
+   success Point D (initial position)
+    Point B (initial position)
+  Will fetch from: Point D (highest confidence)
